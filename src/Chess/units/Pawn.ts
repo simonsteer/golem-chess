@@ -6,7 +6,7 @@ export default class Pawn extends ChessPiece {
   constructor(team: ChessTeam) {
     super({
       team,
-      text: team.type === 'white' ? '♙' : '♟',
+      text: '♙',
       weapon: new Weapon({
         range: new RangeConstraint({
           offsets: {

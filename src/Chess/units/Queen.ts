@@ -1,8 +1,8 @@
 import ChessPiece from './ChessPiece'
-import { Weapon, RangeConstraint } from 'automaton'
+import { Weapon, RangeConstraintConfig } from 'automaton'
 import ChessTeam from '../ChessTeam'
 
-const QUEEN_CONSTRAINT = new RangeConstraint({
+const QUEEN_CONSTRAINT: RangeConstraintConfig = {
   offsets: {
     y: [[-7, 7]],
     x: [[-7, 7]],
@@ -14,7 +14,7 @@ const QUEEN_CONSTRAINT = new RangeConstraint({
       return isDiagonalMovement || isOrthogonalMovement
     },
   ],
-})
+}
 
 export default class Queen extends ChessPiece {
   constructor(team: ChessTeam) {
@@ -24,7 +24,7 @@ export default class Queen extends ChessPiece {
       weapon: new Weapon({ range: QUEEN_CONSTRAINT }),
       movement: {
         steps: 1,
-        range: QUEEN_CONSTRAINT,
+        constraints: [QUEEN_CONSTRAINT],
       },
     })
   }

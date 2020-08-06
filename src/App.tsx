@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Chess from './Chess'
 import './App.css'
-import { Coords, Pathfinder, GridVectorData } from 'automaton'
+import { Coords, Pathfinder, Unit } from 'automaton'
 import ChessPiece from './Chess/units/ChessPiece'
 import ChessTeam from './Chess/ChessTeam'
 
@@ -30,7 +30,7 @@ function App() {
                     pathfinder.coordinates.hash === Coords.hash({ x, y })
                 )
 
-              const unit: ChessPiece | undefined = pathfinder?.unit
+              const unit: Unit | undefined = pathfinder?.unit
 
               return (
                 <div
@@ -51,7 +51,7 @@ function App() {
                 >
                   {!!unit && (
                     <p className={`unit-${(unit.team as ChessTeam).type}`}>
-                      {unit.text}
+                      {(unit as ChessPiece).text}
                     </p>
                   )}
                 </div>

@@ -1,14 +1,14 @@
 import ChessPiece from './ChessPiece'
-import { Weapon, RangeConstraint } from 'automaton'
+import { Weapon, RangeConstraintConfig } from 'automaton'
 import ChessTeam from '../ChessTeam'
 
-const KING_CONSTRAINT = new RangeConstraint({
+const KING_CONSTRAINT: RangeConstraintConfig = {
   offsets: {
     x: [[-1, 1]],
     y: [[-1, 1]],
   },
   exceptions: [({ x, y }) => !(x === 0 && y === 0)],
-})
+}
 
 export default class King extends ChessPiece {
   constructor(team: ChessTeam) {
@@ -20,7 +20,7 @@ export default class King extends ChessPiece {
       }),
       movement: {
         steps: 1,
-        range: KING_CONSTRAINT,
+        constraints: [KING_CONSTRAINT],
       },
     })
   }

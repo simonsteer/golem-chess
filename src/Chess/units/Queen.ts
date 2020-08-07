@@ -1,30 +1,26 @@
 import ChessPiece from './ChessPiece'
-import { Weapon, RangeConstraintConfig } from 'automaton'
+import { RangeConstraintConfig } from 'automaton'
 import ChessTeam from '../ChessTeam'
 
-const QUEEN_CONSTRAINT: RangeConstraintConfig = {
-  offsets: {
-    y: [[-7, 7]],
-    x: [[-7, 7]],
-  },
-  exceptions: [
-    ({ x, y }) => {
-      const isDiagonalMovement = Math.abs(x) === Math.abs(y)
-      const isOrthogonalMovement = x === 0 || y === 0
-      return isDiagonalMovement || isOrthogonalMovement
-    },
-  ],
-}
+const QUEEN_CONSTRAINTS: RangeConstraintConfig[] = [
+  { offsets: { y: [-1], x: [-1] } },
+  { offsets: { y: [1], x: [1] } },
+  { offsets: { y: [-1], x: [1] } },
+  { offsets: { y: [1], x: [-1] } },
+  { offsets: { y: [0], x: [-1] } },
+  { offsets: { y: [0], x: [1] } },
+  { offsets: { y: [1], x: [0] } },
+  { offsets: { y: [-1], x: [0] } },
+]
 
 export default class Queen extends ChessPiece {
   constructor(team: ChessTeam) {
     super({
       team,
       text: team.type === 'white' ? '♕' : '♛',
-      weapon: new Weapon({ range: QUEEN_CONSTRAINT }),
       movement: {
-        steps: 1,
-        constraints: [QUEEN_CONSTRAINT],
+        steps: 7,
+        constraints: QUEEN_CONSTRAINTS,
       },
     })
   }

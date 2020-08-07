@@ -20,7 +20,16 @@ export default class King extends ChessPiece {
       }),
       movement: {
         steps: 1,
-        constraints: [KING_CONSTRAINT],
+        constraints: [
+          { offsets: { x: [-1], y: [-1] } },
+          { offsets: { x: [-1], y: [1] } },
+          { offsets: { x: [0], y: [-1] } },
+          { offsets: { x: [0], y: [1] } },
+          { offsets: { x: [1], y: [1] } },
+          { offsets: { x: [1], y: [-1] } },
+          { offsets: { x: [-1], y: [0] } },
+          { offsets: { x: [1], y: [0] } },
+        ],
       },
     })
   }

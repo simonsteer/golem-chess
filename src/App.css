@@ -8,21 +8,22 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-direction: column;
 }
 
 .tile {
   width: 50px;
   height: 50px;
-  display: inline-flex;
+  display: flex;
   justify-content: center;
   align-items: center;
   background: rgb(108, 108, 108);
   font-weight: bold;
   position: relative;
+  padding: 10px;
 }
 .tile.clickable {
   cursor: pointer;
-  padding: 10px;
   transition: padding 0.3s;
 }
 .tile.clickable:hover {
@@ -55,8 +56,8 @@
   background: rgb(4, 4, 4);
   color: white;
 }
-.row:nth-child(2n) .tile:nth-child(2n),
-.row:nth-child(2n - 1) .tile:nth-child(2n - 1) {
+.row:nth-child(2n) > div:nth-child(2n) .tile,
+.row:nth-child(2n - 1) > div:nth-child(2n - 1) .tile {
   background: rgb(88, 88, 88);
 }
 .tile.highlighted::after {

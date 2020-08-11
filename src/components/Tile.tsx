@@ -6,19 +6,22 @@ import ChessTeam from '../Chess/ChessTeam'
 export default function Tile({
   isOnActiveTeam,
   unit,
-  highlighted,
+  isHighlighted,
+  isSelected,
   ...divProps
 }: {
   unit?: Unit
   isOnActiveTeam: boolean
-  highlighted: boolean
+  isHighlighted: boolean
+  isSelected: boolean
 } & JSX.IntrinsicElements['div']) {
   return (
     <div
       {...divProps}
       className={[
         isOnActiveTeam ? 'clickable' : undefined,
-        highlighted ? 'highlighted' : undefined,
+        isHighlighted ? 'highlighted' : undefined,
+        isSelected ? 'selected' : undefined,
         'tile',
       ]
         .filter(Boolean)

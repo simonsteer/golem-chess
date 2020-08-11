@@ -1,33 +1,32 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import Chess from './Chess'
 import './App.css'
-import { Coords, Team, Pathfinder } from 'automaton'
-import ChessPiece from './Chess/units/ChessPiece'
-import ChessTeam from './Chess/ChessTeam'
+import { Team } from 'automaton'
+import { useEffectOnce } from 'react-use'
 import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 import Tile from './components/Tile'
 import Grid from './components/Grid'
-
-const battle = new Chess().newMatch()
+import ChessTeam from './Chess/ChessTeam'
 
 function App() {
+  const battle = useRef(new Chess().newMatch()).current
   const [highlightedCoords, setHighlightedCoords] = useState<string[]>([])
   const [actionableUnits, setActionableUnits] = useState<ActionableUnit[]>([])
   const [turnIndex, setTurnIndex] = useState(battle.turnIndex)
   const [activeTeam, setActiveTeam] = useState<Team>()
-  const [graph, setGraph] = useState(battle.grid.graph)
   const [pathfinders, setPathfinders] = useState(battle.grid.getPathfinders())
 
-  useEffect(() => {
-    const updateUnit = (incoming: ActionableUnit) =>
-      setActionableUnits(
-        actionableUnits.map(actionable => {
-          if (incoming.unit.id === actionable.unit.id) {
-            return incoming
+  useEffectOnce(() => {
+    const updateUnit = (incoming: ActionableUnit) => {
+      setPathfinders(pathfinders =>
+        pathfinders.map(pathfinder => {
+          if (pathfinder.unit.id === incoming.unit.id) {
+            return incoming.pathfinder
           }
-          return actionable
+          return pathfinder
         })
       )
+    }
     const handleNextTurn = ({
       actionableUnits,
       team,
@@ -46,44 +45,75 @@ function App() {
     battle.on('nextTurn', handleNextTurn)
     battle.grid.on('addUnits', setPathfinders)
 
-    battle.advance()
+    if (battle.turnIndex < 0) {
+      battle.advance()
+    }
 
     return () => {
       battle.off('actionableUnitChanged', updateUnit)
       battle.off('nextTurn', handleNextTurn)
       battle.grid.off('addUnits', setPathfinders)
     }
-  }, [])
+  })
 
   const [selectedUnit, setSelectedUnit] = useState<ActionableUnit>()
 
   return (
     <div className="App">
-      <p>{turnIndex}</p>
+      <div className="info">
+        <p>Turn: {Math.floor(turnIndex / 2)}</p>
+        <p>{activeTeam ? `${(activeTeam as ChessTeam).type} to move` : ''}</p>
+      </div>
       <Grid
-        graph={graph}
+        graph={battle.grid.graph}
         renderItem={({ coords }) => {
           const actionableUnit = actionableUnits.find(
             actionable => actionable.pathfinder.coordinates.hash === coords.hash
           )
+          const pathfinder = pathfinders.find(
+            p => p.coordinates.hash === coords.hash
+          )
+
+          const reachableCoords = actionableUnit
+            ? actionableUnit.pathfinder
+                .getReachable()
+                .map(c => c.hash)
+                .concat(
+                  actionableUnit.pathfinder.getTargetable().map(c => c.hash)
+                )
+            : []
+
+          const isHighlighted = highlightedCoords.includes(coords.hash)
 
           return (
             <Tile
-              unit={
-                pathfinders.find(p => p.coordinates.hash === coords.hash)?.unit
-              }
+              unit={pathfinder?.unit}
               isOnActiveTeam={!!actionableUnit}
-              highlighted={highlightedCoords.includes(coords.hash)}
+              isSelected={
+                selectedUnit
+                  ? selectedUnit.unit.id === pathfinder?.unit.id
+                  : false
+              }
+              isHighlighted={isHighlighted}
               onMouseEnter={() => {
-                if (!actionableUnit) {
-                  setHighlightedCoords([])
-                  return
-                }
-                const reachable = actionableUnit.pathfinder.getReachable() || []
-                setHighlightedCoords(reachable.map(c => c.hash))
+                if (!selectedUnit) setHighlightedCoords(reachableCoords)
               }}
               onClick={() => {
-                setSelectedUnit(actionableUnit)
+                if (isHighlighted && selectedUnit) {
+                  selectedUnit.actions.move([coords])
+                  setSelectedUnit(undefined)
+                  setHighlightedCoords([])
+                  battle.advance()
+                }
+                if (
+                  selectedUnit &&
+                  selectedUnit.unit.id === actionableUnit?.unit.id
+                ) {
+                  setSelectedUnit(undefined)
+                } else {
+                  setSelectedUnit(actionableUnit)
+                  setHighlightedCoords(reachableCoords)
+                }
               }}
             />
           )

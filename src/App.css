@@ -26,12 +26,14 @@
   cursor: pointer;
   transition: padding 0.3s;
 }
-.tile.clickable:hover {
+.tile.clickable:hover,
+.tile.selected {
   cursor: pointer;
   padding: 0px;
 }
-.tile.clickable:hover p {
-  background: lightcoral;
+.tile.clickable:hover p,
+.tile.selected p {
+  background: lightcoral !important;
   border-radius: 0px;
 }
 .tile.clickable p {
@@ -60,6 +62,13 @@
 .row:nth-child(2n - 1) > div:nth-child(2n - 1) .tile {
   background: rgb(88, 88, 88);
 }
+.tile.highlighted {
+  cursor: pointer;
+}
+.tile.highlighted:hover::after {
+  cursor: pointer;
+  background-color: aliceblue;
+}
 .tile.highlighted::after {
   content: '';
   position: absolute;
@@ -70,6 +79,7 @@
   border-radius: 50%;
   background: lightcoral;
   animation: pop-in 0.3s;
+  transition: background 0.3s;
 }
 @keyframes pop-in {
   0% {
@@ -81,6 +91,17 @@
     transform: scale(1);
   }
 }
+@keyframes flicker {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
 
 .overlay {
   position: absolute;
@@ -90,4 +111,17 @@
   bottom: 0;
   z-index: -99;
   pointer-events: none;
+}
+.info {
+  display: flex;
+  justify-content: space-between;
+  width: 400px;
+  font-weight: bold;
+  padding: 10px;
+  background: mediumpurple;
+  color: white;
+}
+.info p {
+  padding: 0;
+  margin: 0;
 }

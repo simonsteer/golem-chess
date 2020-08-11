@@ -1,8 +1,8 @@
-import { Weapon, RangeConstraintConfig } from 'automaton'
+import { ConstraintConfig } from 'automaton'
 import ChessPiece from './ChessPiece'
 import ChessTeam from '../ChessTeam'
 
-const ROOK_CONSTRAINTS: RangeConstraintConfig[] = [
+const ROOK_CONSTRAINTS: ConstraintConfig[] = [
   { offsets: { y: [-1], x: [0] } },
   { offsets: { y: [1], x: [0] } },
   { offsets: { y: [0], x: [1] } },

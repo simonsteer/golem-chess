@@ -1,8 +1,8 @@
 import ChessPiece from './ChessPiece'
-import { Weapon, RangeConstraintConfig } from 'automaton'
+import { ConstraintConfig } from 'automaton'
 import ChessTeam from '../ChessTeam'
 
-const KING_CONSTRAINT: RangeConstraintConfig = {
+const KING_CONSTRAINT: ConstraintConfig = {
   offsets: {
     x: [[-1, 1]],
     y: [[-1, 1]],
@@ -16,7 +16,7 @@ export default class King extends ChessPiece {
       team,
       text: team.type === 'white' ? '♔' : '♚',
       weapon: {
-        range: KING_CONSTRAINT,
+        range: { constraints: [KING_CONSTRAINT] },
       },
       movement: {
         steps: 1,

@@ -7,20 +7,28 @@ import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/T
 import Tile from './components/Tile'
 import Grid from './components/Grid'
 import ChessTeam from './Chess/ChessTeam'
+import ChessPiece from './Chess/units/ChessPiece'
 
 function App() {
-  const battle = useRef(new Chess().newMatch()).current
+  const battle = useRef(new Chess().newMatch())
   const [highlightedCoords, setHighlightedCoords] = useState<string[]>([])
   const [actionableUnits, setActionableUnits] = useState<ActionableUnit[]>([])
-  const [turnIndex, setTurnIndex] = useState(battle.turnIndex)
+  const [turnIndex, setTurnIndex] = useState(battle.current.turnIndex)
   const [activeTeam, setActiveTeam] = useState<Team>()
-  const [pathfinders, setPathfinders] = useState(battle.grid.getPathfinders())
+  const [pathfinders, setPathfinders] = useState(
+    battle.current.grid.getPathfinders()
+  )
 
   useEffectOnce(() => {
     const updateUnit = (incoming: ActionableUnit) => {
+      const isPawn = (incoming.unit as ChessPiece).text === '♙'
+
       setPathfinders(pathfinders =>
         pathfinders.map(pathfinder => {
           if (pathfinder.unit.id === incoming.unit.id) {
+            if (isPawn && incoming.unit.movement.steps === 2) {
+              incoming.unit.movement.steps = 1
+            }
             return incoming.pathfinder
           }
           return pathfinder
@@ -40,19 +48,25 @@ function App() {
       setTurnIndex(turnIndex)
       setActiveTeam(team)
     }
+    const handleRemoveUnits = (unitIds: Symbol[]) =>
+      setPathfinders(pathfinders =>
+        pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
+      )
 
-    battle.on('actionableUnitChanged', updateUnit)
-    battle.on('nextTurn', handleNextTurn)
-    battle.grid.on('addUnits', setPathfinders)
+    battle.current.on('actionableUnitChanged', updateUnit)
+    battle.current.on('nextTurn', handleNextTurn)
+    battle.current.grid.on('addUnits', setPathfinders)
+    battle.current.grid.on('removeUnits', handleRemoveUnits)
 
-    if (battle.turnIndex < 0) {
-      battle.advance()
+    if (battle.current.turnIndex < 0) {
+      battle.current.advance()
     }
 
     return () => {
-      battle.off('actionableUnitChanged', updateUnit)
-      battle.off('nextTurn', handleNextTurn)
-      battle.grid.off('addUnits', setPathfinders)
+      battle.current.off('actionableUnitChanged', updateUnit)
+      battle.current.off('nextTurn', handleNextTurn)
+      battle.current.grid.off('addUnits', setPathfinders)
+      battle.current.grid.off('removeUnits', handleRemoveUnits)
     }
   })
 
@@ -65,7 +79,7 @@ function App() {
         <p>{activeTeam ? `${(activeTeam as ChessTeam).type} to move` : ''}</p>
       </div>
       <Grid
-        graph={battle.grid.graph}
+        graph={battle.current.grid.graph}
         renderItem={({ coords }) => {
           const actionableUnit = actionableUnits.find(
             actionable => actionable.pathfinder.coordinates.hash === coords.hash
@@ -100,10 +114,15 @@ function App() {
               }}
               onClick={() => {
                 if (isHighlighted && selectedUnit) {
+                  const enemyUnit = pathfinders.find(
+                    p => p.coordinates.hash === coords.hash
+                  )?.unit
+                  if (enemyUnit) battle.current.grid.removeUnits([enemyUnit.id])
                   selectedUnit.actions.move([coords])
+
                   setSelectedUnit(undefined)
                   setHighlightedCoords([])
-                  battle.advance()
+                  battle.current.advance()
                 }
                 if (
                   selectedUnit &&

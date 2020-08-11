@@ -68,11 +68,7 @@
   position: relative;
   cursor: pointer;
 }
-.tile.highlighted:hover::after {
-  cursor: pointer;
-  background-color: aliceblue;
-}
-.tile.highlighted::after {
+.tile::after {
   content: '';
   position: absolute;
   top: 18px;
@@ -81,29 +77,18 @@
   height: calc(100% - 36px);
   border-radius: 50%;
   background: lightcoral;
-  animation: pop-in 0.3s;
-  transition: background 0.3s;
+  transition: opacity 0.3s, transform 0.3s, background 0.3s;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.2);
 }
-@keyframes pop-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.2);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+.tile.highlighted::after {
+  cursor: pointer;
+  opacity: 1;
+  transform: scale(1);
 }
-@keyframes flicker {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
-  }
+.tile.highlighted:hover::after {
+  background-color: aliceblue;
 }
 
 .overlay {

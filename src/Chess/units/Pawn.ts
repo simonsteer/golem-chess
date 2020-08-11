@@ -11,19 +11,22 @@ export default class Pawn extends ChessPiece {
           constraints: [
             {
               offsets: {
-                y: team.type === 'black' ? [1, 2] : [-1, -2],
+                y: team.type === 'black' ? [1] : [-1],
                 x: [-1, 1],
               },
             },
           ],
+          canPassThroughUnit: unit =>
+            (unit.team as ChessTeam).type !== team.type,
+          unitPassThroughLimit: 1,
         },
       },
       movement: {
-        steps: 1,
+        steps: 2,
         constraints: [
           {
             offsets: {
-              y: team.type === 'black' ? [1, 2] : [-1, -2],
+              y: team.type === 'black' ? [1] : [-1],
               x: [0],
             },
           },

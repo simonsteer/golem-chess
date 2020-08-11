@@ -15,6 +15,7 @@ export default class ChessPiece extends Unit {
   }) {
     super({
       team,
+      weapon: undefined,
       movement: { canPassThroughUnit: () => false, ...movement },
       ...restOptions,
     })

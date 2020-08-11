@@ -7,14 +7,14 @@ export default class Pawn extends ChessPiece {
     super({
       team,
       text: '♙',
-      weapon: new Weapon({
+      weapon: {
         range: {
           offsets: {
             y: team.type === 'black' ? [1, 2] : [-1, -2],
             x: [-1, 1],
           },
         },
-      }),
+      },
       movement: {
         steps: 1,
         constraints: [

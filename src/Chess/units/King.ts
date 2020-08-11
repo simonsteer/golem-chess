@@ -15,9 +15,9 @@ export default class King extends ChessPiece {
     super({
       team,
       text: team.type === 'white' ? '♔' : '♚',
-      weapon: new Weapon({
+      weapon: {
         range: KING_CONSTRAINT,
-      }),
+      },
       movement: {
         steps: 1,
         constraints: [

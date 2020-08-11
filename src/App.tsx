@@ -79,7 +79,7 @@ function App() {
                 .getReachable()
                 .map(c => c.hash)
                 .concat(
-                  actionableUnit.pathfinder.getTargetable().map(c => c.hash)
+                  ...actionableUnit.pathfinder.getTargetable().map(c => c.hash)
                 )
             : []
 

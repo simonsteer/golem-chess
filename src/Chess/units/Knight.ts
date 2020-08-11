@@ -15,7 +15,7 @@ export default class Knight extends ChessPiece {
     super({
       team,
       text: team.type === 'white' ? '♘' : '♞',
-      weapon: new Weapon({ range: KNIGHT_CONSTRAINT }),
+      weapon: { range: KNIGHT_CONSTRAINT },
       movement: {
         steps: 1,
         constraints: [KNIGHT_CONSTRAINT],

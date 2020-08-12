@@ -2,6 +2,9 @@ import ChessPiece from './ChessPiece'
 import ChessTeam from '../ChessTeam'
 
 export default class Pawn extends ChessPiece {
+  moves = 0
+  canPerformEnPassant = false
+
   constructor(team: ChessTeam) {
     super({
       team,
@@ -16,8 +19,8 @@ export default class Pawn extends ChessPiece {
               },
             },
           ],
-          canPassThroughUnit: unit =>
-            (unit.team as ChessTeam).type !== team.type,
+          canPassThroughUnit: pathfinder =>
+            (pathfinder.unit.team as ChessTeam).type !== team.type,
           unitPassThroughLimit: 1,
         },
       },

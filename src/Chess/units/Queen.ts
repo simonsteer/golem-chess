@@ -18,7 +18,8 @@ export default class Queen extends ChessPiece {
           { offsets: { y: [1], x: [0] } },
           { offsets: { y: [-1], x: [0] } },
         ],
-        canPassThroughUnit: unit => (unit.team as ChessTeam).type !== team.type,
+        canPassThroughUnit: pathfinder =>
+          (pathfinder.unit.team as ChessTeam).type !== team.type,
         unitPassThroughLimit: 1,
       },
     })

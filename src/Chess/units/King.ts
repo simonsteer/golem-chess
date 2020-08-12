@@ -30,7 +30,8 @@ export default class King extends ChessPiece {
           { offsets: { x: [-1], y: [0] } },
           { offsets: { x: [1], y: [0] } },
         ],
-        canPassThroughUnit: unit => (unit.team as ChessTeam).type !== team.type,
+        canPassThroughUnit: pathfinder =>
+          (pathfinder.unit.team as ChessTeam).type !== team.type,
         unitPassThroughLimit: 1,
       },
     })

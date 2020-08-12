@@ -3,6 +3,7 @@ import ChessTeam from '../ChessTeam'
 
 export default class ChessPiece extends Unit {
   text: string
+  moves = 0
 
   constructor({
     team,

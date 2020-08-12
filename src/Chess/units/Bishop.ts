@@ -14,7 +14,8 @@ export default class Bishop extends ChessPiece {
           { offsets: { y: [-1], x: [1] } },
           { offsets: { y: [1], x: [-1] } },
         ],
-        canPassThroughUnit: unit => (unit.team as ChessTeam).type !== team.type,
+        canPassThroughUnit: pathfinder =>
+          (pathfinder.unit.team as ChessTeam).type !== team.type,
         unitPassThroughLimit: 1,
       },
     })

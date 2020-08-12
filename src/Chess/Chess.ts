@@ -4,9 +4,32 @@ import {
   RawCoords,
   BattleManager,
   createSimpleGraph,
+  Coords,
+  mapGraph,
 } from 'automaton'
 import { Pawn, Rook, Knight, Bishop, King, Queen } from './units'
 import ChessTeam from './ChessTeam'
+
+const EN_PASSANT_COORDS: RawCoords[] = [
+  { x: 0, y: 3 },
+  { x: 1, y: 3 },
+  { x: 2, y: 3 },
+  { x: 3, y: 3 },
+  { x: 4, y: 3 },
+  { x: 5, y: 3 },
+  { x: 6, y: 3 },
+  { x: 7, y: 3 },
+  { x: 0, y: 4 },
+  { x: 1, y: 4 },
+  { x: 2, y: 4 },
+  { x: 3, y: 4 },
+  { x: 4, y: 4 },
+  { x: 5, y: 4 },
+  { x: 6, y: 4 },
+  { x: 7, y: 4 },
+]
+
+const EN_PASSANT_HASHES = Coords.hashMany(EN_PASSANT_COORDS)
 
 export default class Chess {
   black: ChessTeam
@@ -22,9 +45,10 @@ export default class Chess {
 
   newMatch = () => new BattleManager(this.board)
 
-  private createBoard = () =>
-    new Grid({
-      graph: createSimpleGraph(8),
+  private createBoard = () => {
+    const graph = createSimpleGraph(8)
+    return new Grid({
+      graph,
       units: (['white', 'black'] as const).reduce((acc, team) => {
         this.createPieces(team).forEach((row, y) => {
           acc.push(
@@ -43,6 +67,7 @@ export default class Chess {
         return acc
       }, [] as [Unit, RawCoords][]),
     })
+  }
 
   private createPieces = (allegiance: 'black' | 'white') => {
     const team = this[allegiance]

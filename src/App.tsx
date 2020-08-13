@@ -260,6 +260,7 @@ function App() {
                   setSelectedUnit(undefined)
                   setHighlightedCoords([])
                   battle.advance()
+                  return
                 }
                 if (
                   selectedUnit &&

@@ -6,7 +6,6 @@ export default class Knight extends ChessPiece {
     super({
       team,
       text: team.type === 'white' ? '♘' : '♞',
-      weapon: undefined,
       movement: {
         steps: 1,
         constraints: [

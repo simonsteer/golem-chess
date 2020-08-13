@@ -17,9 +17,6 @@ export default class Rook extends ChessPiece {
       movement: {
         steps: 7,
         constraints: ROOK_CONSTRAINTS,
-        canPassThroughUnit: pathfinder =>
-          (pathfinder.unit.team as ChessTeam).type !== team.type,
-        unitPassThroughLimit: 1,
       },
     })
   }

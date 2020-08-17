@@ -38,7 +38,28 @@ export const EN_PASSANT_COORDS: RawCoords[] = [
   { x: 7, y: 4 },
 ]
 
-export const EN_PASSANT_CAPTURE_HASHES = Coords.hashMany(
-  EN_PASSANT_CAPTURE_COORDS
-)
-export const EN_PASSANT_HASHES = Coords.hashMany(EN_PASSANT_COORDS)
+export const CASTLING_COORDS: RawCoords[] = [
+  { x: 3, y: 0 },
+  { x: 5, y: 0 },
+  { x: 3, y: 7 },
+  { x: 5, y: 7 },
+]
+
+export const CASTLING_CAPTURE_COORDS: RawCoords[] = [
+  { x: 2, y: 0 },
+  { x: 6, y: 0 },
+  { x: 2, y: 7 },
+  { x: 6, y: 7 },
+]
+
+export const [
+  EN_PASSANT_HASHES,
+  EN_PASSANT_CAPTURE_HASHES,
+  CASTLING_HASHES,
+  CASTLING_CAPTURE_HASHES,
+] = [
+  EN_PASSANT_COORDS,
+  EN_PASSANT_CAPTURE_COORDS,
+  CASTLING_COORDS,
+  CASTLING_CAPTURE_COORDS,
+].map(Coords.hashMany)

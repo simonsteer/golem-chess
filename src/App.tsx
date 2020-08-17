@@ -119,7 +119,7 @@ function App() {
             actionable => actionable.pathfinder.coordinates.hash === coords.hash
           )
           const reachableCoords = actionableUnit
-            ? battle.reachableCoords(actionableUnit)
+            ? battle.getLegalMoves(actionableUnit.pathfinder)
             : []
           const isHighlighted = highlightedCoords.includes(coords.hash)
 

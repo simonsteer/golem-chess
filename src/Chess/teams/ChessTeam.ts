@@ -1,5 +1,8 @@
-import { Team, Unit, RawCoords } from 'automaton'
+import { Team, Unit, RawCoords, Coords } from 'automaton'
 import { Pawn, Rook, Knight, Bishop, King, Queen } from '../units'
+import ChessBoard from '../grids/ChessBoard'
+import Chess from '..'
+import ChessPiece from '../units/ChessPiece'
 
 export default class ChessTeam extends Team {
   type: 'black' | 'white'
@@ -47,5 +50,37 @@ export default class ChessTeam extends Team {
       )
       return acc
     }, [] as [Unit, RawCoords][])
+  }
+
+  getHasBeenDefeated = (battle: Chess) => {
+    const king = (battle.grid as ChessBoard).teams[this.type]
+      .getPathfinders(battle.grid)
+      .find(pathfinder => (pathfinder.unit as ChessPiece).is('king'))
+
+    return (
+      !king ||
+      (this.getIsKingInCheck(battle) && battle.getLegalMoves(king).length === 0)
+    )
+  }
+
+  getIsKingInCheck = (battle: Chess) => {
+    const king = (battle.grid as ChessBoard).teams[this.type]
+      .getPathfinders(battle.grid)
+      .find(pathfinder => (pathfinder.unit as ChessPiece).is('king'))
+
+    if (!king) {
+      return false
+    }
+
+    const otherTeam = (battle.grid as ChessBoard).teams[
+      this.type === 'white' ? 'black' : 'white'
+    ]
+
+    return otherTeam
+      .getPathfinders(battle.grid)
+      .filter(p => !(p.unit as ChessPiece).is('king'))
+      .some(p =>
+        battle.getLegalMoves(p).some(hash => hash === king.coordinates.hash)
+      )
   }
 }

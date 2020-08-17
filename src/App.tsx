@@ -103,11 +103,8 @@ function App() {
       setPathfinders(pathfinders =>
         pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
       )
-    const handleUnitStop: TileEvents['unitStop'] = (...args) => {
-      battle.handleEnPassant(...args)
-      battle.handlePromotePawn(...args)
-    }
-    battle.grid.graph[0][0].tile.events.on('unitStop', handleUnitStop)
+
+    battle.setupListeners()
     battle.events.on('actionableUnitChanged', updateUnit)
     battle.events.on('nextTurn', handleNextTurn)
     battle.grid.events.on('addUnits', setPathfinders)
@@ -118,7 +115,7 @@ function App() {
     }
 
     return () => {
-      battle.grid.graph[0][0].tile.events.off('unitStop', handleUnitStop)
+      battle.teardownListeners()
       battle.events.off('actionableUnitChanged', updateUnit)
       battle.events.off('nextTurn', handleNextTurn)
       battle.grid.events.off('addUnits', setPathfinders)

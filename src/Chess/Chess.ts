@@ -24,6 +24,16 @@ export default class Chess extends BattleManager {
     super(new ChessBoard())
   }
 
+  setupListeners() {
+    this.grid.graph[0][0].tile.events.on('unitStop', this.handleEnPassant)
+    this.grid.graph[0][0].tile.events.on('unitStop', this.handlePromotePawn)
+  }
+
+  teardownListeners() {
+    this.grid.graph[0][0].tile.events.off('unitStop', this.handleEnPassant)
+    this.grid.graph[0][0].tile.events.off('unitStop', this.handlePromotePawn)
+  }
+
   getEnPassantCoords = (pathfinderA: Pathfinder) => {
     const unitA = pathfinderA.unit as ChessPiece
     const pathfinderB = this.lastTouchedPathfinder

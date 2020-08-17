@@ -177,27 +177,14 @@ function App() {
           )
 
           const reachableCoords = actionableUnit
-            ? actionableUnit.pathfinder
-                .getReachable()
-                .map(c => c.hash)
-                .concat(
-                  ...actionableUnit.pathfinder.getTargetable().map(c => c.hash)
-                )
+            ? battle.reachableCoords(actionableUnit)
             : []
-
-          if (pathfinder && battle.lastTouchedPathfinder) {
-            const enPassantCoords = battle.getEnPassantCoords(
-              pathfinder,
-              battle.lastTouchedPathfinder
-            )
-            if (enPassantCoords)
-              reachableCoords.push(Coords.hash(enPassantCoords))
-          }
 
           const pawn = !!pathfinder && getIsPawn(pathfinder.unit)
           const lastPawn =
             !!battle.lastTouchedPathfinder &&
             getIsPawn(battle.lastTouchedPathfinder.unit)
+
           if (pawn && lastPawn && lastPawn.moves === 1) {
             const pawnPathfinder = pathfinder!
             const lastPawnPathfinder = battle.lastTouchedPathfinder!

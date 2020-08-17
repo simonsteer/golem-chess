@@ -103,22 +103,9 @@ function App() {
       setPathfinders(pathfinders =>
         pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
       )
-    const handlePromotePawn: TileEvents['unitStop'] = pathfinder => {
-      const pawn = getIsPawn(pathfinder.unit)
-      if (!pawn) {
-        return
-      }
-      const checks = { white: 0, black: 7 }
-      if (
-        checks[(pathfinder.unit.team as ChessTeam).type] ===
-        pathfinder.coordinates.y
-      ) {
-        console.log('promote that pawn')
-      }
-    }
     const handleUnitStop: TileEvents['unitStop'] = (...args) => {
       battle.handleEnPassant(...args)
-      handlePromotePawn(...args)
+      battle.handlePromotePawn(...args)
     }
     battle.grid.graph[0][0].tile.events.on('unitStop', handleUnitStop)
     battle.events.on('actionableUnitChanged', updateUnit)

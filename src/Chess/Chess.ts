@@ -71,6 +71,19 @@ export default class Chess extends BattleManager {
     }
   }
 
+  handlePromotePawn: TileEvents['unitStop'] = pathfinder => {
+    if ((pathfinder.unit as ChessPiece).type !== 'pawn') {
+      return
+    }
+    const checks = { white: 0, black: 7 }
+    if (
+      checks[(pathfinder.unit.team as ChessTeam).type] ===
+      pathfinder.coordinates.y
+    ) {
+      console.log('promote that pawn')
+    }
+  }
+
   reachableCoords = (actionableUnit: ActionableUnit) =>
     actionableUnit
       ? [

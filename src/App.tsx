@@ -126,7 +126,10 @@ function App() {
         pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
       )
     const handleEnPassant: TileEvents['unitStop'] = pathfinder => {
-      if (EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)) {
+      if (
+        (pathfinder.unit as ChessPiece).text === '♙' &&
+        EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
+      ) {
         const targetCoords = EN_PASSANT_COORDS.find(
           coord =>
             coord.x === pathfinder.coordinates.x &&

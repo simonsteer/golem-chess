@@ -17,8 +17,6 @@ export default class Pawn extends ChessPiece {
               },
             },
           ],
-          canPassThroughUnit: pathfinder =>
-            (pathfinder.unit.team as ChessTeam).type !== team.type,
         },
       },
       movement: {
@@ -31,6 +29,7 @@ export default class Pawn extends ChessPiece {
             },
           },
         ],
+        canPassThroughUnit: () => false,
       },
     })
   }

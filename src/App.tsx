@@ -103,25 +103,6 @@ function App() {
       setPathfinders(pathfinders =>
         pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
       )
-    const handleEnPassant: TileEvents['unitStop'] = pathfinder => {
-      if (
-        (pathfinder.unit as ChessPiece).text === '♙' &&
-        EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
-      ) {
-        const targetCoords = EN_PASSANT_COORDS.find(
-          coord =>
-            coord.x === pathfinder.coordinates.x &&
-            Math.abs(coord.y - pathfinder.coordinates.y) === 1
-        )
-        if (targetCoords) {
-          const unitAtCoords = battle.grid.getData(targetCoords)?.pathfinder
-          const pawnAtCoords = !!unitAtCoords && getIsPawn(unitAtCoords.unit)
-          if (pawnAtCoords && pawnAtCoords.moves === 1) {
-            battle.grid.removeUnits([pawnAtCoords.id])
-          }
-        }
-      }
-    }
     const handlePromotePawn: TileEvents['unitStop'] = pathfinder => {
       const pawn = getIsPawn(pathfinder.unit)
       if (!pawn) {
@@ -136,7 +117,7 @@ function App() {
       }
     }
     const handleUnitStop: TileEvents['unitStop'] = (...args) => {
-      handleEnPassant(...args)
+      battle.handleEnPassant(...args)
       handlePromotePawn(...args)
     }
     battle.grid.graph[0][0].tile.events.on('unitStop', handleUnitStop)
@@ -169,38 +150,15 @@ function App() {
       <Grid
         graph={battle.grid.graph}
         renderItem={({ coords }) => {
-          const actionableUnit = actionableUnits.find(
-            actionable => actionable.pathfinder.coordinates.hash === coords.hash
-          )
           const pathfinder = pathfinders.find(
             p => p.coordinates.hash === coords.hash
           )
-
+          const actionableUnit = actionableUnits.find(
+            actionable => actionable.pathfinder.coordinates.hash === coords.hash
+          )
           const reachableCoords = actionableUnit
             ? battle.reachableCoords(actionableUnit)
             : []
-
-          const pawn = !!pathfinder && getIsPawn(pathfinder.unit)
-          const lastPawn =
-            !!battle.lastTouchedPathfinder &&
-            getIsPawn(battle.lastTouchedPathfinder.unit)
-
-          if (pawn && lastPawn && lastPawn.moves === 1) {
-            const pawnPathfinder = pathfinder!
-            const lastPawnPathfinder = battle.lastTouchedPathfinder!
-            const deltas = pawnPathfinder.coordinates.deltas(
-              lastPawnPathfinder.coordinates
-            )
-            if (
-              EN_PASSANT_HASHES.includes(lastPawnPathfinder.coordinates.hash) &&
-              Math.abs(deltas.x) === 1 &&
-              deltas.y === 0
-            ) {
-              const enPassantCoords = lastPawnPathfinder.coordinates.raw
-              enPassantCoords.y = enPassantCoords.y === 3 ? 2 : 5
-              reachableCoords.push(Coords.hash(enPassantCoords))
-            }
-          }
 
           const isHighlighted = highlightedCoords.includes(coords.hash)
 

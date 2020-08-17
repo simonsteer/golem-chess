@@ -1,6 +1,5 @@
 import ChessPiece from './ChessPiece'
 import { ChessTeam } from '../teams'
-import Chess from '..'
 
 export default class Pawn extends ChessPiece {
   moves = 0

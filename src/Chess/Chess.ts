@@ -1,14 +1,4 @@
-import {
-  Grid,
-  Unit,
-  RawCoords,
-  BattleManager,
-  createSimpleGraph,
-  Pathfinder,
-  Coords,
-  TileEvents,
-} from 'automaton'
-import { Pawn, Rook, Knight, Bishop, King, Queen } from './units'
+import { BattleManager, Pathfinder, Coords, TileEvents } from 'automaton'
 import { ChessTeam } from './teams'
 import ChessBoard from './grids/ChessBoard'
 import {
@@ -27,11 +17,13 @@ export default class Chess extends BattleManager {
   setupListeners() {
     this.grid.graph[0][0].tile.events.on('unitStop', this.handleEnPassant)
     this.grid.graph[0][0].tile.events.on('unitStop', this.handlePromotePawn)
+    this.events.on('actionableUnitChanged', this.handleUpdateUnit)
   }
 
   teardownListeners() {
     this.grid.graph[0][0].tile.events.off('unitStop', this.handleEnPassant)
     this.grid.graph[0][0].tile.events.off('unitStop', this.handlePromotePawn)
+    this.events.off('actionableUnitChanged', this.handleUpdateUnit)
   }
 
   getEnPassantCoords = (pathfinderA: Pathfinder) => {
@@ -91,6 +83,14 @@ export default class Chess extends BattleManager {
       pathfinder.coordinates.y
     ) {
       console.log('promote that pawn')
+    }
+  }
+
+  handleUpdateUnit = (incoming: ActionableUnit) => {
+    const unit = incoming.unit as ChessPiece
+    unit.moves++
+    if (unit.type === 'pawn' && unit.moves === 1) {
+      unit.movement.steps = 1
     }
   }
 

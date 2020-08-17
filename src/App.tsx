@@ -1,64 +1,12 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import Chess from './Chess'
 import './App.css'
-import {
-  Team,
-  RawCoords,
-  Coords,
-  Unit,
-  TileEvents,
-  Pathfinder,
-} from 'automaton'
+import { Team, Pathfinder, Coords } from 'automaton'
 import { useEffectOnce } from 'react-use'
 import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 import Tile from './components/Tile'
 import Grid from './components/Grid'
 import { ChessTeam } from './Chess/teams'
-import ChessPiece from './Chess/units/ChessPiece'
-import { Pawn } from './Chess/units'
-
-const EN_PASSANT_CAPTURE_COORDS: RawCoords[] = [
-  { x: 0, y: 2 },
-  { x: 1, y: 2 },
-  { x: 2, y: 2 },
-  { x: 3, y: 2 },
-  { x: 4, y: 2 },
-  { x: 5, y: 2 },
-  { x: 6, y: 2 },
-  { x: 7, y: 2 },
-  { x: 0, y: 5 },
-  { x: 1, y: 5 },
-  { x: 2, y: 5 },
-  { x: 3, y: 5 },
-  { x: 4, y: 5 },
-  { x: 5, y: 5 },
-  { x: 6, y: 5 },
-  { x: 7, y: 5 },
-]
-const EN_PASSANT_COORDS: RawCoords[] = [
-  { x: 0, y: 3 },
-  { x: 1, y: 3 },
-  { x: 2, y: 3 },
-  { x: 3, y: 3 },
-  { x: 4, y: 3 },
-  { x: 5, y: 3 },
-  { x: 6, y: 3 },
-  { x: 7, y: 3 },
-  { x: 0, y: 4 },
-  { x: 1, y: 4 },
-  { x: 2, y: 4 },
-  { x: 3, y: 4 },
-  { x: 4, y: 4 },
-  { x: 5, y: 4 },
-  { x: 6, y: 4 },
-  { x: 7, y: 4 },
-]
-
-const EN_PASSANT_CAPTURE_HASHES = Coords.hashMany(EN_PASSANT_CAPTURE_COORDS)
-const EN_PASSANT_HASHES = Coords.hashMany(EN_PASSANT_COORDS)
-
-const getIsPawn = (unit: Unit) =>
-  (unit as ChessPiece).text === '♙' && (unit as Pawn)
 
 function App() {
   const battle = useRef(new Chess()).current
@@ -67,16 +15,10 @@ function App() {
   const [turnIndex, setTurnIndex] = useState(battle.turnIndex)
   const [activeTeam, setActiveTeam] = useState<Team>()
   const [pathfinders, setPathfinders] = useState(battle.grid.getPathfinders())
+  const [selectedUnit, setSelectedUnit] = useState<ActionableUnit>()
 
   useEffectOnce(() => {
-    const updateUnit = (incoming: ActionableUnit) => {
-      ;(incoming.unit as ChessPiece).moves++
-
-      const pawn = getIsPawn(incoming.unit)
-      if (pawn && pawn.moves === 1) {
-        pawn.movement.steps = 1
-      }
-
+    const updateUnit = (incoming: ActionableUnit) =>
       setPathfinders(pathfinders =>
         pathfinders.map(pathfinder => {
           if (pathfinder.unit.id === incoming.unit.id) {
@@ -85,7 +27,6 @@ function App() {
           return pathfinder
         })
       )
-    }
     const handleNextTurn = ({
       actionableUnits,
       team,
@@ -99,6 +40,8 @@ function App() {
       setTurnIndex(turnIndex)
       setActiveTeam(team)
     }
+    const handleAddUnits = (incoming: Pathfinder[]) =>
+      setPathfinders(pathfinders => [...incoming, ...pathfinders])
     const handleRemoveUnits = (unitIds: Symbol[]) =>
       setPathfinders(pathfinders =>
         pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
@@ -107,7 +50,7 @@ function App() {
     battle.setupListeners()
     battle.events.on('actionableUnitChanged', updateUnit)
     battle.events.on('nextTurn', handleNextTurn)
-    battle.grid.events.on('addUnits', setPathfinders)
+    battle.grid.events.on('addUnits', handleAddUnits)
     battle.grid.events.on('removeUnits', handleRemoveUnits)
 
     if (battle.turnIndex < 0) {
@@ -118,12 +61,47 @@ function App() {
       battle.teardownListeners()
       battle.events.off('actionableUnitChanged', updateUnit)
       battle.events.off('nextTurn', handleNextTurn)
-      battle.grid.events.off('addUnits', setPathfinders)
+      battle.grid.events.off('addUnits', handleAddUnits)
       battle.grid.events.off('removeUnits', handleRemoveUnits)
     }
   })
 
-  const [selectedUnit, setSelectedUnit] = useState<ActionableUnit>()
+  const handleClickTile = useCallback(
+    ({
+      actionableUnit,
+      coords,
+      isHighlighted,
+      reachableCoords,
+    }: {
+      actionableUnit: ActionableUnit | undefined
+      coords: Coords
+      isHighlighted: boolean
+      reachableCoords: string[]
+    }) => {
+      if (isHighlighted && selectedUnit) {
+        const otherUnit = pathfinders.find(
+          p => p.coordinates.hash === coords.hash
+        )?.unit
+
+        if (otherUnit) battle.grid.removeUnits([otherUnit.id])
+        selectedUnit.actions.move([coords])
+
+        setSelectedUnit(undefined)
+        setHighlightedCoords([])
+
+        battle.advance()
+
+        return
+      }
+      if (selectedUnit && selectedUnit.unit.id === actionableUnit?.unit.id) {
+        setSelectedUnit(undefined)
+      } else {
+        setSelectedUnit(actionableUnit)
+        setHighlightedCoords(reachableCoords)
+      }
+    },
+    [setSelectedUnit, selectedUnit, setHighlightedCoords, pathfinders, battle]
+  )
 
   return (
     <div className="App">
@@ -143,7 +121,6 @@ function App() {
           const reachableCoords = actionableUnit
             ? battle.reachableCoords(actionableUnit)
             : []
-
           const isHighlighted = highlightedCoords.includes(coords.hash)
 
           return (
@@ -159,29 +136,14 @@ function App() {
               onMouseEnter={() => {
                 if (!selectedUnit) setHighlightedCoords(reachableCoords)
               }}
-              onClick={() => {
-                if (isHighlighted && selectedUnit) {
-                  const enemyUnit = pathfinders.find(
-                    p => p.coordinates.hash === coords.hash
-                  )?.unit
-                  if (enemyUnit) battle.grid.removeUnits([enemyUnit.id])
-                  selectedUnit.actions.move([coords])
-
-                  setSelectedUnit(undefined)
-                  setHighlightedCoords([])
-                  battle.advance()
-                  return
-                }
-                if (
-                  selectedUnit &&
-                  selectedUnit.unit.id === actionableUnit?.unit.id
-                ) {
-                  setSelectedUnit(undefined)
-                } else {
-                  setSelectedUnit(actionableUnit)
-                  setHighlightedCoords(reachableCoords)
-                }
-              }}
+              onClick={() =>
+                handleClickTile({
+                  isHighlighted,
+                  actionableUnit,
+                  coords,
+                  reachableCoords,
+                })
+              }
             />
           )
         }}

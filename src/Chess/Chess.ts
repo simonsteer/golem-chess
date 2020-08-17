@@ -31,7 +31,7 @@ export default class Chess extends BattleManager {
     const pathfinderB = this.lastTouchedPathfinder
     const unitB = pathfinderB?.unit as ChessPiece | undefined
 
-    if (unitA.type === 'pawn' && unitB?.type === 'pawn') {
+    if (unitA.is('pawn') && unitB?.is('pawn')) {
       const deltas = pathfinderA.coordinates.deltas(pathfinderB!.coordinates)
       const canEnPassant =
         EN_PASSANT_HASHES.includes(pathfinderB!.coordinates.hash) &&
@@ -50,7 +50,7 @@ export default class Chess extends BattleManager {
 
   handleEnPassant: TileEvents['unitStop'] = pathfinder => {
     if (
-      (pathfinder.unit as ChessPiece).text === '♙' &&
+      (pathfinder.unit as ChessPiece).is('pawn') &&
       EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
     ) {
       const targetCoords = EN_PASSANT_COORDS.find(
@@ -64,7 +64,7 @@ export default class Chess extends BattleManager {
 
         if (
           unitAtCoords &&
-          unitAtCoords.type === 'pawn' &&
+          unitAtCoords.is('pawn') &&
           unitAtCoords.moves === 1
         ) {
           this.grid.removeUnits([unitAtCoords.id])
@@ -89,10 +89,12 @@ export default class Chess extends BattleManager {
   handleUpdateUnit = (incoming: ActionableUnit) => {
     const unit = incoming.unit as ChessPiece
     unit.moves++
-    if (unit.type === 'pawn' && unit.moves === 1) {
+    if (unit.is('pawn') && unit.moves === 1) {
       unit.movement.steps = 1
     }
   }
+
+  getCastlingCoords = (pathfinder: Pathfinder) => {}
 
   reachableCoords = (actionableUnit: ActionableUnit) =>
     actionableUnit

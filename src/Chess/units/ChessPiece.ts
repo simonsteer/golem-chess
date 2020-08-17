@@ -31,4 +31,6 @@ export default class ChessPiece extends Unit {
     this.type = type
     this.text = CHESS_PIECE_TEXT_MAPPINGS[type][team.type]
   }
+
+  is = (type: ChessPieceType) => this.type === type
 }

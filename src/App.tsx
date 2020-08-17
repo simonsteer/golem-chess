@@ -68,28 +68,6 @@ function App() {
   const [activeTeam, setActiveTeam] = useState<Team>()
   const [pathfinders, setPathfinders] = useState(battle.grid.getPathfinders())
 
-  const getEnPassantCoords = useRef(
-    (pathfinderA: Pathfinder, pathfinderB: Pathfinder) => {
-      const pawn = getIsPawn(pathfinderA.unit)
-      const lastPawn = getIsPawn(pathfinderB.unit)
-      if (pawn && lastPawn && lastPawn.moves === 1) {
-        const deltas = pathfinderA.coordinates.deltas(pathfinderB.coordinates)
-        const canEnPassant =
-          EN_PASSANT_HASHES.includes(pathfinderB.coordinates.hash) &&
-          Math.abs(deltas.x) === 1 &&
-          deltas.y === 0
-
-        if (canEnPassant) {
-          const enPassantCoords = pathfinderB.coordinates.raw
-          enPassantCoords.y = enPassantCoords.y === 4 ? 5 : 2
-
-          return new Coords(enPassantCoords)
-        }
-      }
-      return undefined
-    }
-  ).current
-
   useEffectOnce(() => {
     const updateUnit = (incoming: ActionableUnit) => {
       ;(incoming.unit as ChessPiece).moves++
@@ -208,7 +186,7 @@ function App() {
             : []
 
           if (pathfinder && battle.lastTouchedPathfinder) {
-            const enPassantCoords = getEnPassantCoords(
+            const enPassantCoords = battle.getEnPassantCoords(
               pathfinder,
               battle.lastTouchedPathfinder
             )

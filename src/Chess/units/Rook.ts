@@ -12,8 +12,8 @@ const ROOK_CONSTRAINTS: ConstraintConfig[] = [
 export default class Rook extends ChessPiece {
   constructor(team: ChessTeam) {
     super({
+      type: 'rook',
       team,
-      text: team.type === 'white' ? '♖' : '♜',
       movement: {
         steps: 7,
         constraints: ROOK_CONSTRAINTS,

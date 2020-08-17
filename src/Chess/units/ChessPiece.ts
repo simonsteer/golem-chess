@@ -1,18 +1,21 @@
 import { Unit, UnitConfig } from 'automaton'
 import { ChessTeam } from '../teams'
+import { ChessPieceType } from './types'
+import { CHESS_PIECE_TEXT_MAPPINGS } from './constants'
 
 export default class ChessPiece extends Unit {
   text: string
+  type: ChessPieceType
   moves = 0
 
   constructor({
     team,
     movement = {},
-    text,
+    type,
     ...restOptions
   }: Omit<UnitConfig, 'team'> & {
     team: ChessTeam
-    text: string
+    type: ChessPieceType
   }) {
     super({
       team,
@@ -25,6 +28,7 @@ export default class ChessPiece extends Unit {
       },
       ...restOptions,
     })
-    this.text = text
+    this.type = type
+    this.text = CHESS_PIECE_TEXT_MAPPINGS[type][team.type]
   }
 }

@@ -4,8 +4,8 @@ import { ChessTeam } from '../teams'
 export default class Queen extends ChessPiece {
   constructor(team: ChessTeam) {
     super({
+      type: 'queen',
       team,
-      text: team.type === 'white' ? '♕' : '♛',
       movement: {
         steps: 7,
         constraints: [

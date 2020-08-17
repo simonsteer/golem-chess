@@ -5,8 +5,8 @@ export default class Pawn extends ChessPiece {
   moves = 0
   constructor(team: ChessTeam) {
     super({
+      type: 'pawn',
       team,
-      text: '♙',
       weapon: {
         range: {
           constraints: [

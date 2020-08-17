@@ -1,7 +1,7 @@
 import React from 'react'
 import { Unit } from 'automaton'
 import ChessPiece from '../Chess/units/ChessPiece'
-import ChessTeam from '../Chess/ChessTeam'
+import { ChessTeam } from '../Chess/teams'
 
 export default function Tile({
   isOnActiveTeam,

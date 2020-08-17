@@ -1,5 +1,5 @@
 import { Unit, UnitConfig } from 'automaton'
-import ChessTeam from '../ChessTeam'
+import { ChessTeam } from '../teams'
 
 export default class ChessPiece extends Unit {
   text: string

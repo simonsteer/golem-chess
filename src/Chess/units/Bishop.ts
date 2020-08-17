@@ -1,5 +1,5 @@
 import ChessPiece from './ChessPiece'
-import ChessTeam from '../ChessTeam'
+import { ChessTeam } from '../teams'
 
 export default class Bishop extends ChessPiece {
   constructor(team: ChessTeam) {

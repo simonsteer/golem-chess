@@ -1,6 +1,6 @@
 import { ConstraintConfig } from 'automaton'
 import ChessPiece from './ChessPiece'
-import ChessTeam from '../ChessTeam'
+import { ChessTeam } from '../teams'
 
 const ROOK_CONSTRAINTS: ConstraintConfig[] = [
   { offsets: { y: [-1], x: [0] } },

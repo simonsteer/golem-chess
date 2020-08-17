@@ -13,7 +13,7 @@ import { useEffectOnce } from 'react-use'
 import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 import Tile from './components/Tile'
 import Grid from './components/Grid'
-import ChessTeam from './Chess/ChessTeam'
+import { ChessTeam } from './Chess/teams'
 import ChessPiece from './Chess/units/ChessPiece'
 import { Pawn } from './Chess/units'
 
@@ -61,7 +61,7 @@ const getIsPawn = (unit: Unit) =>
   (unit as ChessPiece).text === '♙' && (unit as Pawn)
 
 function App() {
-  const battle = useRef(new Chess().newMatch()).current
+  const battle = useRef(new Chess()).current
   const [highlightedCoords, setHighlightedCoords] = useState<string[]>([])
   const [actionableUnits, setActionableUnits] = useState<ActionableUnit[]>([])
   const [turnIndex, setTurnIndex] = useState(battle.turnIndex)

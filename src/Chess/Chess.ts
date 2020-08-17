@@ -1,6 +1,6 @@
 import { BattleManager, Pathfinder, Coords, TileEvents } from 'automaton'
 import { ChessTeam } from './teams'
-import ChessBoard from './grids/ChessBoard'
+import { ChessBoard } from './grids'
 import {
   EN_PASSANT_HASHES,
   EN_PASSANT_CAPTURE_HASHES,

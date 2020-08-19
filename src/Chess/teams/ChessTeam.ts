@@ -76,11 +76,14 @@ export default class ChessTeam extends Team {
       this.type === 'white' ? 'black' : 'white'
     ]
 
-    return otherTeam
-      .getPathfinders(battle.grid)
-      .filter(p => !(p.unit as ChessPiece).is('king'))
-      .some(p =>
-        battle.getLegalMoves(p).some(hash => hash === king.coordinates.hash)
-      )
+    return otherTeam.getPathfinders(battle.grid).some(p => {
+      const moves = [
+        ...p.getReachable(),
+        ...p.getTargetable(),
+        ...battle.getEnPassantCoords(p),
+        ...battle.getCastlingCoords(p),
+      ].map(c => c.hash)
+      return moves.includes(king.coordinates.hash)
+    })
   }
 }

@@ -185,14 +185,23 @@ export default class Chess extends BattleManager {
       ...this.getCastlingCoords(pathfinder),
     ]
 
-    if ((pathfinder.unit as ChessPiece).is('king')) {
+    if (
+      (pathfinder.unit as ChessPiece).is('king') ||
+      (pathfinder.unit.team as ChessTeam).getIsKingInCheck(this)
+    ) {
       const originalCoords = pathfinder.coordinates.raw
+
       moves = moves.filter(coord => {
-        pathfinder.coordinates.update(coord)
+        const other = this.grid.getData(coord)?.pathfinder
+
+        pathfinder.move([coord])
         const result = !(pathfinder.unit.team as ChessTeam).getIsKingInCheck(
           this
         )
-        pathfinder.coordinates.update(originalCoords)
+
+        if (other) other.move([coord])
+        pathfinder.move([originalCoords])
+
         return result
       })
     }

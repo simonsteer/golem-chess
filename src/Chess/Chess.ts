@@ -1,4 +1,11 @@
-import { BattleManager, Pathfinder, Coords, TileEvents } from 'automaton'
+import {
+  BattleManager,
+  Pathfinder,
+  Coords,
+  TileEvents,
+  TemporaryGridModification,
+  GridModifications,
+} from 'automaton'
 import { ChessTeam } from './teams'
 import { ChessBoard } from './grids'
 import {
@@ -13,12 +20,17 @@ import ChessPiece from './units/ChessPiece'
 import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 
 export default class Chess extends BattleManager {
+  winningTeam: 'white' | 'black' | 'neither team' = 'neither team'
+
   constructor() {
     super(new ChessBoard())
     this.endCondition = battle =>
-      Object.values((this.grid as ChessBoard).teams).some(team =>
-        team.getHasBeenDefeated(battle as Chess)
-      )
+      Object.values((this.grid as ChessBoard).teams).some(team => {
+        const hasTeamBeenDefeated = team.getHasBeenDefeated(battle as Chess)
+        if (hasTeamBeenDefeated)
+          this.winningTeam = team.type === 'black' ? 'white' : 'black'
+        return hasTeamBeenDefeated
+      })
   }
 
   setupListeners() {
@@ -26,6 +38,7 @@ export default class Chess extends BattleManager {
     this.grid.graph[0][0].tile.events.on('unitStop', this.handleEnPassant)
     this.grid.graph[0][0].tile.events.on('unitStop', this.handlePromotePawn)
     this.events.on('actionableUnitChanged', this.handleUpdateUnit)
+    this.events.on('battleEnd', this.handleGameOver)
   }
 
   teardownListeners() {
@@ -33,6 +46,7 @@ export default class Chess extends BattleManager {
     this.grid.graph[0][0].tile.events.off('unitStop', this.handleEnPassant)
     this.grid.graph[0][0].tile.events.off('unitStop', this.handlePromotePawn)
     this.events.off('actionableUnitChanged', this.handleUpdateUnit)
+    this.events.off('battleEnd', this.handleGameOver)
   }
 
   getEnPassantCoords = (pathfinderA: Pathfinder) => {
@@ -40,7 +54,7 @@ export default class Chess extends BattleManager {
     const pathfinderB = this.lastTouchedPathfinder
     const unitB = pathfinderB?.unit as ChessPiece | undefined
 
-    if (unitA.is('pawn') && unitB?.is('pawn')) {
+    if (unitA.is('pawn') && unitB?.is('pawn') && unitB.moves === 1) {
       const deltas = pathfinderA.coordinates.deltas(pathfinderB!.coordinates)
       const canEnPassant =
         EN_PASSANT_HASHES.includes(pathfinderB!.coordinates.hash) &&
@@ -55,6 +69,10 @@ export default class Chess extends BattleManager {
       }
     }
     return []
+  }
+
+  handleGameOver = () => {
+    window.alert(`${this.winningTeam} wins!`)
   }
 
   handleEnPassant: TileEvents['unitStop'] = pathfinder => {
@@ -102,13 +120,13 @@ export default class Chess extends BattleManager {
   }
 
   getCastlingCoords = (pathfinder: Pathfinder) => {
-    const king = pathfinder.unit as ChessPiece
-    const team = king.team as ChessTeam
+    const unit = pathfinder.unit as ChessPiece
+    const team = unit.team as ChessTeam
 
-    if (king.is('king') && king.moves === 0) {
+    if (unit.is('king') && unit.moves === 0) {
       const originalCoords = pathfinder.coordinates.raw
 
-      const rooks = king.team
+      const rooks = unit.team
         .getPathfinders(this.grid)
         .filter(p => (p.unit as ChessPiece).is('rook'))
 
@@ -118,20 +136,26 @@ export default class Chess extends BattleManager {
           (rook.unit as ChessPiece).moves === 0 &&
           reachable.some(coords => {
             pathfinder.coordinates.update(coords)
+
             const result =
               CASTLING_HASHES.includes(coords.hash) &&
               !team.getIsKingInCheck(this)
+
             pathfinder.coordinates.update(originalCoords)
+
             return result
           })
         ) {
           acc.push(
             ...reachable.filter(coords => {
               pathfinder.coordinates.update(coords)
+
               const result =
                 CASTLING_CAPTURE_HASHES.includes(coords.hash) &&
                 !team.getIsKingInCheck(this)
+
               pathfinder.coordinates.update(originalCoords)
+
               return result
             })
           )
@@ -161,7 +185,7 @@ export default class Chess extends BattleManager {
           ) {
             rook.move(
               CASTLING_COORDS.filter(coords =>
-                [2, 3].includes(Math.abs(coords.x - rook.coordinates.x))
+                [2, 3].includes(Math.abs(rook.coordinates.deltas(coords).x))
               )
             )
             return true
@@ -171,40 +195,36 @@ export default class Chess extends BattleManager {
   }
 
   handleDidEnd = () => {
-    const winningTeam = Object.values((this.grid as ChessBoard).teams).find(
-      team => !team.getHasBeenDefeated(this)
-    )
-    window.alert(`The game is over, ${winningTeam?.type} wins!`)
+    window.alert(`The game is over, ${this.winningTeam} wins!`)
   }
 
   getLegalMoves = (pathfinder: Pathfinder) => {
-    let moves = [
+    this.events.disable()
+    this.grid.events.disable()
+    this.grid.mapTiles(({ tile }) => tile.events.disable())
+
+    const moves = [
       ...pathfinder.getReachable(),
       ...pathfinder.getTargetable(),
       ...this.getEnPassantCoords(pathfinder),
       ...this.getCastlingCoords(pathfinder),
-    ]
-
-    if (
-      (pathfinder.unit as ChessPiece).is('king') ||
-      (pathfinder.unit.team as ChessTeam).getIsKingInCheck(this)
-    ) {
-      const originalCoords = pathfinder.coordinates.raw
-
-      moves = moves.filter(coord => {
-        const other = this.grid.getData(coord)?.pathfinder
-
-        pathfinder.move([coord])
-        const result = !(pathfinder.unit.team as ChessTeam).getIsKingInCheck(
-          this
-        )
-
-        if (other) other.move([coord])
-        pathfinder.move([originalCoords])
-
-        return result
+    ].filter(coord => {
+      const other = this.grid.getData(coord)?.pathfinder
+      const modification = new TemporaryGridModification(this.grid, {
+        remove: other ? [other.unit.id] : [],
+        move: [[pathfinder.unit.id, coord]],
       })
-    }
+
+      modification.setup()
+      const result = !(pathfinder.unit.team as ChessTeam).getIsKingInCheck(this)
+      modification.teardown()
+
+      return result
+    })
+
+    this.events.enable()
+    this.grid.events.enable()
+    this.grid.mapTiles(({ tile }) => tile.events.enable())
 
     return moves.map(c => c.hash)
   }

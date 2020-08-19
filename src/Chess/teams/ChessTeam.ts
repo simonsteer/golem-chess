@@ -53,14 +53,14 @@ export default class ChessTeam extends Team {
   }
 
   getHasBeenDefeated = (battle: Chess) => {
-    const king = (battle.grid as ChessBoard).teams[this.type]
-      .getPathfinders(battle.grid)
-      .find(pathfinder => (pathfinder.unit as ChessPiece).is('king'))
-
-    return (
-      !king ||
-      (this.getIsKingInCheck(battle) && battle.getLegalMoves(king).length === 0)
+    const pathfinders = (battle.grid as ChessBoard).teams[
+      this.type
+    ].getPathfinders(battle.grid)
+    const king = pathfinders.find(pathfinder =>
+      (pathfinder.unit as ChessPiece).is('king')
     )
+
+    return !king || pathfinders.every(p => battle.getLegalMoves(p).length === 0)
   }
 
   getIsKingInCheck = (battle: Chess) => {
@@ -77,12 +77,7 @@ export default class ChessTeam extends Team {
     ]
 
     return otherTeam.getPathfinders(battle.grid).some(p => {
-      const moves = [
-        ...p.getReachable(),
-        ...p.getTargetable(),
-        ...battle.getEnPassantCoords(p),
-        ...battle.getCastlingCoords(p),
-      ].map(c => c.hash)
+      const moves = [...p.getReachable(), ...p.getTargetable()].map(c => c.hash)
       return moves.includes(king.coordinates.hash)
     })
   }

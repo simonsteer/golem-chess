@@ -215,9 +215,9 @@ export default class Chess extends BattleManager {
         move: [[pathfinder.unit.id, coord]],
       })
 
-      modification.setup()
+      modification.apply()
       const result = !(pathfinder.unit.team as ChessTeam).getIsKingInCheck(this)
-      modification.teardown()
+      modification.revoke()
 
       return result
     })

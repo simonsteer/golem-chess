@@ -4,7 +4,6 @@ import {
   Coords,
   TileEvents,
   TemporaryGridModification,
-  GridModifications,
 } from 'automaton'
 import { ChessTeam } from './teams'
 import { ChessBoard } from './grids'
@@ -36,7 +35,6 @@ export default class Chess extends BattleManager {
   setupListeners() {
     this.grid.graph[0][0].tile.events.on('unitStop', this.handleCastling)
     this.grid.graph[0][0].tile.events.on('unitStop', this.handleEnPassant)
-    this.grid.graph[0][0].tile.events.on('unitStop', this.handlePromotePawn)
     this.events.on('actionableUnitChanged', this.handleUpdateUnit)
     this.events.on('battleEnd', this.handleGameOver)
   }
@@ -44,7 +42,6 @@ export default class Chess extends BattleManager {
   teardownListeners() {
     this.grid.graph[0][0].tile.events.off('unitStop', this.handleCastling)
     this.grid.graph[0][0].tile.events.off('unitStop', this.handleEnPassant)
-    this.grid.graph[0][0].tile.events.off('unitStop', this.handlePromotePawn)
     this.events.off('actionableUnitChanged', this.handleUpdateUnit)
     this.events.off('battleEnd', this.handleGameOver)
   }
@@ -54,7 +51,11 @@ export default class Chess extends BattleManager {
     const pathfinderB = this.lastTouchedPathfinder
     const unitB = pathfinderB?.unit as ChessPiece | undefined
 
-    if (unitA.is('pawn') && unitB?.is('pawn') && unitB.moves === 1) {
+    if (
+      unitA.is('pawn') &&
+      unitB?.is('pawn') &&
+      unitB.totalMovesPerformed === 1
+    ) {
       const deltas = pathfinderA.coordinates.deltas(pathfinderB!.coordinates)
       const canEnPassant =
         EN_PASSANT_HASHES.includes(pathfinderB!.coordinates.hash) &&
@@ -92,7 +93,7 @@ export default class Chess extends BattleManager {
         if (
           unitAtCoords &&
           unitAtCoords.is('pawn') &&
-          unitAtCoords.moves === 1
+          unitAtCoords.totalMovesPerformed === 1
         ) {
           this.grid.removeUnits([unitAtCoords.id])
         }
@@ -113,8 +114,8 @@ export default class Chess extends BattleManager {
 
   handleUpdateUnit = (incoming: ActionableUnit) => {
     const unit = incoming.unit as ChessPiece
-    unit.moves++
-    if (unit.is('pawn') && unit.moves === 1) {
+    unit.totalMovesPerformed++
+    if (unit.is('pawn') && unit.totalMovesPerformed === 1) {
       unit.movement.steps = 1
     }
   }
@@ -123,38 +124,37 @@ export default class Chess extends BattleManager {
     const unit = pathfinder.unit as ChessPiece
     const team = unit.team as ChessTeam
 
-    if (unit.is('king') && unit.moves === 0) {
-      const originalCoords = pathfinder.coordinates.raw
+    if (!unit.is('king') || unit.totalMovesPerformed !== 0) {
+      return []
+    }
 
-      const rooks = unit.team
-        .getPathfinders(this.grid)
-        .filter(p => (p.unit as ChessPiece).is('rook'))
-
-      return rooks.reduce((acc, rook) => {
+    return unit.team
+      .getPathfinders(this.grid)
+      .filter(
+        p =>
+          (p.unit as ChessPiece).is('rook') &&
+          (p.unit as ChessPiece).totalMovesPerformed === 0
+      )
+      .reduce((acc, rook) => {
         const reachable = rook.getReachable()
         if (
-          (rook.unit as ChessPiece).moves === 0 &&
-          reachable.some(coords => {
-            pathfinder.coordinates.update(coords)
-
-            const result =
-              CASTLING_HASHES.includes(coords.hash) &&
-              !team.getIsKingInCheck(this)
-
-            pathfinder.coordinates.update(originalCoords)
-
-            return result
-          })
+          CASTLING_HASHES.some(hash =>
+            Coords.hashMany(reachable).includes(hash)
+          )
         ) {
           acc.push(
             ...reachable.filter(coords => {
-              pathfinder.coordinates.update(coords)
+              if (!CASTLING_CAPTURE_HASHES.includes(coords.hash)) {
+                return false
+              }
 
-              const result =
-                CASTLING_CAPTURE_HASHES.includes(coords.hash) &&
-                !team.getIsKingInCheck(this)
+              const modifications = new TemporaryGridModification(this.grid, {
+                move: [[pathfinder.unit.id, coords.raw]],
+              })
 
-              pathfinder.coordinates.update(originalCoords)
+              modifications.apply()
+              const result = !team.getIsKingInCheck(this)
+              modifications.revoke()
 
               return result
             })
@@ -162,8 +162,6 @@ export default class Chess extends BattleManager {
         }
         return acc
       }, [] as Coords[])
-    }
-    return []
   }
 
   handleCastling: TileEvents['unitStop'] = pathfinder => {
@@ -171,8 +169,8 @@ export default class Chess extends BattleManager {
 
     if (
       unit.is('king') &&
-      unit.moves === 0 &&
-      [2, 6].includes(pathfinder.coordinates.x)
+      unit.totalMovesPerformed === 0 &&
+      CASTLING_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
     ) {
       unit.team
         .getPathfinders(this.grid)
@@ -184,12 +182,14 @@ export default class Chess extends BattleManager {
             )
           ) {
             rook.move(
-              CASTLING_COORDS.filter(coords =>
-                [2, 3].includes(Math.abs(rook.coordinates.deltas(coords).x))
-              )
+              CASTLING_COORDS.filter(coords => {
+                const deltas = pathfinder.coordinates.deltas(coords)
+                return Math.abs(deltas.x) === 1 && deltas.y === 0
+              })
             )
             return true
           }
+          return false
         })
     }
   }

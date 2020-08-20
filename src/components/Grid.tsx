@@ -4,10 +4,12 @@ import { RawCoords } from 'automaton'
 export default function Grid<T>({
   graph,
   renderItem,
+  disabled,
   ...divProps
 }: {
   graph: T[][]
   renderItem: (item: T, coords: RawCoords) => React.ReactNode
+  disabled: boolean
 } & JSX.IntrinsicElements['div']) {
   return (
     <div className="grid" {...divProps}>
@@ -22,6 +24,9 @@ export default function Grid<T>({
           ))}
         </div>
       ))}
+      <div className={disabled ? 'gridOverlay disabled' : 'gridOverlay'}>
+        <p>select a promotion for your pawn</p>
+      </div>
     </div>
   )
 }

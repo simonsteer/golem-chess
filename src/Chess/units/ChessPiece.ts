@@ -6,7 +6,7 @@ import { CHESS_PIECE_TEXT_MAPPINGS } from './constants'
 export default class ChessPiece extends Unit {
   text: string
   type: ChessPieceType
-  moves = 0
+  totalMovesPerformed = 0
 
   constructor({
     team,

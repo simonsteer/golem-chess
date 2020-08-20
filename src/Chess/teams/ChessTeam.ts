@@ -1,4 +1,4 @@
-import { Team, Unit, RawCoords, Coords } from 'automaton'
+import { Team, Unit, RawCoords } from 'automaton'
 import { Pawn, Rook, Knight, Bishop, King, Queen } from '../units'
 import ChessBoard from '../grids/ChessBoard'
 import Chess from '..'

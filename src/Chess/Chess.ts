@@ -36,14 +36,12 @@ export default class Chess extends BattleManager {
     this.grid.graph[0][0].tile.events.on('unitStop', this.handleCastling)
     this.grid.graph[0][0].tile.events.on('unitStop', this.handleEnPassant)
     this.events.on('actionableUnitChanged', this.handleUpdateUnit)
-    this.events.on('battleEnd', this.handleGameOver)
   }
 
   teardownListeners() {
     this.grid.graph[0][0].tile.events.off('unitStop', this.handleCastling)
     this.grid.graph[0][0].tile.events.off('unitStop', this.handleEnPassant)
     this.events.off('actionableUnitChanged', this.handleUpdateUnit)
-    this.events.off('battleEnd', this.handleGameOver)
   }
 
   getEnPassantCoords = (pathfinderA: Pathfinder) => {
@@ -70,10 +68,6 @@ export default class Chess extends BattleManager {
       }
     }
     return []
-  }
-
-  handleGameOver = () => {
-    window.alert(`${this.winningTeam} wins!`)
   }
 
   handleEnPassant: TileEvents['unitStop'] = pathfinder => {
@@ -192,10 +186,6 @@ export default class Chess extends BattleManager {
           return false
         })
     }
-  }
-
-  handleDidEnd = () => {
-    window.alert(`The game is over, ${this.winningTeam} wins!`)
   }
 
   getLegalMoves = (pathfinder: Pathfinder) => {

@@ -63,12 +63,18 @@ function App() {
       setShowPawnPromotionMenu(isPawn && isAtEndOfBoard)
     }
 
+    const handleGameOver = () => {
+      const res = window.confirm(`${battle.winningTeam} wins!`)
+      window.location.reload()
+    }
+
     battle.setupListeners()
     battle.grid.graph[0][0].tile.events.on('unitStop', handlePromotePawn)
     battle.events.on('actionableUnitChanged', updateUnit)
     battle.events.on('nextTurn', handleNextTurn)
     battle.grid.events.on('addUnits', handleAddUnits)
     battle.grid.events.on('removeUnits', handleRemoveUnits)
+    battle.events.on('battleEnd', handleGameOver)
 
     if (battle.turnIndex < 0) {
       battle.advance()
@@ -81,6 +87,7 @@ function App() {
       battle.events.off('nextTurn', handleNextTurn)
       battle.grid.events.off('addUnits', handleAddUnits)
       battle.grid.events.off('removeUnits', handleRemoveUnits)
+      battle.events.on('battleEnd', handleGameOver)
     }
   })
 

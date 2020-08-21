@@ -114,7 +114,7 @@
   padding: 0;
   margin: 0;
 }
-.pawnPromotionMenu {
+.optionsMenu {
   padding: 10px;
   padding-left: 20px;
   width: 400px;
@@ -124,7 +124,7 @@
   justify-content: center;
   align-items: center;
 }
-.pawnPromotionMenu button {
+.optionsMenu button {
   cursor: pointer;
   background: none;
   border: 0px;
@@ -135,7 +135,7 @@
   font-weight: bold;
   transition: background-color 0.2s;
 }
-.pawnPromotionMenu button:hover {
+.optionsMenu button:hover {
   background-color: aquamarine;
 }
 .grid {

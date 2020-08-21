@@ -20,7 +20,9 @@ function App() {
   const [activeTeam, setActiveTeam] = useState<Team>()
   const [pathfinders, setPathfinders] = useState(battle.grid.getPathfinders())
   const [selectedUnit, setSelectedUnit] = useState<ActionableUnit>()
-  const [showPawnPromotionMenu, setShowPawnPromotionMenu] = useState(false)
+  const [optionsMenuType, setOptionsMenuType] = useState<
+    'midgame' | 'promotion' | 'endgame'
+  >('midgame')
 
   useEffectOnce(() => {
     const updateUnit = (incoming: ActionableUnit) =>
@@ -60,13 +62,10 @@ function App() {
         { white: 0, black: 7 }[(pathfinder.unit.team as ChessTeam).type] ===
         pathfinder.coordinates.y
 
-      setShowPawnPromotionMenu(isPawn && isAtEndOfBoard)
+      setOptionsMenuType(isPawn && isAtEndOfBoard ? 'promotion' : 'midgame')
     }
 
-    const handleGameOver = () => {
-      window.confirm(`${battle.gameEndReason} - ${battle.winningTeam} wins`)
-      window.location.reload()
-    }
+    const handleGameOver = () => setOptionsMenuType('endgame')
 
     battle.setupListeners()
     battle.grid.graph[0][0].tile.events.on('unitStop', handlePromotePawn)
@@ -128,6 +127,61 @@ function App() {
     [setSelectedUnit, selectedUnit, setHighlightedCoords, pathfinders, battle]
   )
 
+  const renderOptionsMenu = useCallback(() => {
+    switch (optionsMenuType) {
+      case 'endgame':
+        return (
+          <button onClick={() => window.location.reload()}>Play again</button>
+        )
+      case 'midgame':
+        return (
+          activeTeam && (
+            <>
+              <button
+                onClick={() =>
+                  console.log(`${(activeTeam as ChessTeam).type} resigned`)
+                }
+              >
+                Resign
+              </button>
+              <button
+                onClick={() =>
+                  console.log(
+                    `${(activeTeam as ChessTeam).type} requesting a draw`
+                  )
+                }
+              >
+                Request a draw
+              </button>
+            </>
+          )
+        )
+      case 'promotion':
+        return Object.keys(PromotionUnits).map(key => {
+          return (
+            <button
+              onClick={() => {
+                const PromotedUnit =
+                  PromotionUnits[key as keyof typeof PromotionUnits]
+
+                const pawn = battle.lastTouchedPathfinder!
+                const unit = new PromotedUnit(pawn.unit.team as ChessTeam)
+
+                battle.grid.removeUnits([pawn.unit.id])
+                battle.grid.addUnits([[unit, pawn.coordinates.raw]])
+                setOptionsMenuType('midgame')
+              }}
+              key={key}
+            >
+              {key}
+            </button>
+          )
+        })
+      default:
+        return null
+    }
+  }, [optionsMenuType, battle.grid, battle.lastTouchedPathfinder])
+
   return (
     <div className="App">
       <div className="info">
@@ -135,7 +189,13 @@ function App() {
         <p>{activeTeam ? `${(activeTeam as ChessTeam).type} to move` : ''}</p>
       </div>
       <Grid
-        disabled={showPawnPromotionMenu}
+        message={
+          optionsMenuType === 'endgame'
+            ? `${battle.gameEndReason}! ${battle.winningTeam} wins.`
+            : optionsMenuType === 'promotion'
+            ? 'Select a promotion for your pawn'
+            : undefined
+        }
         graph={battle.grid.graph}
         renderItem={({ coords }) => {
           const pathfinder = pathfinders.find(
@@ -177,29 +237,7 @@ function App() {
           if (!selectedUnit) setHighlightedCoords([])
         }}
       />
-      <div className="pawnPromotionMenu">
-        {showPawnPromotionMenu &&
-          Object.keys(PromotionUnits).map(key => {
-            return (
-              <button
-                onClick={() => {
-                  const PromotedUnit =
-                    PromotionUnits[key as keyof typeof PromotionUnits]
-
-                  const pawn = battle.lastTouchedPathfinder!
-                  const unit = new PromotedUnit(pawn.unit.team as ChessTeam)
-
-                  battle.grid.removeUnits([pawn.unit.id])
-                  battle.grid.addUnits([[unit, pawn.coordinates.raw]])
-                  setShowPawnPromotionMenu(false)
-                }}
-                key={key}
-              >
-                {key}
-              </button>
-            )
-          })}
-      </div>
+      <div className="optionsMenu">{renderOptionsMenu()}</div>
     </div>
   )
 }

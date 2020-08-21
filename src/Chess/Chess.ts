@@ -38,23 +38,12 @@ export default class Chess extends BattleManager {
     pathfinder: Pathfinder
   ) => (pathfinder.unit as ChessPiece).is(type)
 
-  /*
-  If both sides have any one of the following, and there are no pawns on the board: 
-
-A lone king 
-a king and bishop
-a king and knight
-a king and two knights
-  */
   private getDoesTeamHaveInsufficientMatingMaterial = (
     battle: BattleManager,
     team: Team
   ) => {
     const pathfinders = team.getPathfinders(battle.grid)
-    if (
-      pathfinders.some(this.createGetPathfinderIs('pawn')) ||
-      pathfinders.length > 3
-    ) {
+    if (pathfinders.some(this.createGetPathfinderIs('pawn'))) {
       return false
     }
     switch (pathfinders.length) {
@@ -125,13 +114,13 @@ a king and two knights
     this.events.off('actionableUnitChanged', this.handleUpdateUnit)
   }
 
+  // TODO: calc of "special" tiles like this should belong to a Unit or its movement
   private getEnPassantCoords = (pathfinderA: Pathfinder) => {
-    const unitA = pathfinderA.unit as ChessPiece
     const pathfinderB = this.lastTouchedPathfinder
     const unitB = pathfinderB?.unit as ChessPiece | undefined
 
     if (
-      unitA.is('pawn') &&
+      this.createGetPathfinderIs('pawn')(pathfinderA) &&
       unitB?.is('pawn') &&
       unitB.totalMovesPerformed === 1
     ) {
@@ -153,7 +142,7 @@ a king and two knights
 
   private handleEnPassant: TileEvents['unitStop'] = pathfinder => {
     if (
-      (pathfinder.unit as ChessPiece).is('pawn') &&
+      this.createGetPathfinderIs('pawn')(pathfinder) &&
       EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
     ) {
       const targetCoords = EN_PASSANT_COORDS.find(
@@ -176,17 +165,7 @@ a king and two knights
     }
   }
 
-  private handlePromotePawn: TileEvents['unitStop'] = pathfinder => {
-    if ((pathfinder.unit as ChessPiece).type === 'pawn') {
-      if (
-        { white: 0, black: 7 }[(pathfinder.unit.team as ChessTeam).type] ===
-        pathfinder.coordinates.y
-      ) {
-        console.log('promote that pawn')
-      }
-    }
-  }
-
+  // TODO: move this into BattleManager or TurnManager
   private handleUpdateUnit = (incoming: ActionableUnit) => {
     const unit = incoming.unit as ChessPiece
     unit.totalMovesPerformed++
@@ -195,6 +174,7 @@ a king and two knights
     }
   }
 
+  // TODO: calc of "special" tiles like this should belong to a Unit or its movement
   private getCastlingCoords = (pathfinder: Pathfinder) => {
     const unit = pathfinder.unit as ChessPiece
     const team = unit.team as ChessTeam
@@ -226,7 +206,6 @@ a king and two knights
               const modifications = new TemporaryGridModification(this.grid, {
                 move: [[pathfinder.unit.id, coords.raw]],
               })
-
               modifications.apply()
               const result = !team.isKingInCheck(this)
               modifications.revoke()
@@ -280,12 +259,12 @@ a king and two knights
       ...this.getEnPassantCoords(pathfinder),
       ...this.getCastlingCoords(pathfinder),
     ].filter(coord => {
-      const other = this.grid.getData(coord)?.pathfinder
+      const otherPathfinder = this.grid.getData(coord)?.pathfinder
+
       const modification = new TemporaryGridModification(this.grid, {
-        remove: other ? [other.unit.id] : [],
+        remove: otherPathfinder ? [otherPathfinder.unit.id] : [],
         move: [[pathfinder.unit.id, coord]],
       })
-
       modification.apply()
       const result = !(pathfinder.unit.team as ChessTeam).isKingInCheck(this)
       modification.revoke()

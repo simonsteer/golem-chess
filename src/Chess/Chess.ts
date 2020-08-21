@@ -4,6 +4,7 @@ import {
   Coords,
   TileEvents,
   TemporaryGridModification,
+  Team,
 } from 'automaton'
 import { ChessTeam } from './teams'
 import { ChessBoard } from './grids'
@@ -17,19 +18,99 @@ import {
 } from './constants'
 import ChessPiece from './units/ChessPiece'
 import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
+import { ChessPieceType } from './units/types'
 
 export default class Chess extends BattleManager {
-  winningTeam: 'white' | 'black' | 'neither team' = 'neither team'
+  winningTeam: 'White' | 'Black' | 'Neither team' = 'Neither team'
+  gameEndReason:
+    | 'Checkmate'
+    | 'Stalemate'
+    | 'Insufficient mating material'
+    | 'Draw'
+    | 'Both players resigned' = 'Stalemate'
 
   constructor() {
     super(new ChessBoard())
-    this.endCondition = battle =>
-      Object.values((this.grid as ChessBoard).teams).some(team => {
-        const hasTeamBeenDefeated = team.getHasBeenDefeated(battle as Chess)
-        if (hasTeamBeenDefeated)
-          this.winningTeam = team.type === 'black' ? 'white' : 'black'
-        return hasTeamBeenDefeated
-      })
+    this.endCondition = this.getDidEnd
+  }
+
+  private createGetPathfinderIs = <K extends ChessPieceType>(type: K) => (
+    pathfinder: Pathfinder
+  ) => (pathfinder.unit as ChessPiece).is(type)
+
+  /*
+  If both sides have any one of the following, and there are no pawns on the board: 
+
+A lone king 
+a king and bishop
+a king and knight
+a king and two knights
+  */
+  private getDoesTeamHaveInsufficientMatingMaterial = (
+    battle: BattleManager,
+    team: Team
+  ) => {
+    const pathfinders = team.getPathfinders(battle.grid)
+    if (
+      pathfinders.some(this.createGetPathfinderIs('pawn')) ||
+      pathfinders.length > 3
+    ) {
+      return false
+    }
+    switch (pathfinders.length) {
+      case 3:
+        return (
+          pathfinders.filter(this.createGetPathfinderIs('knight')).length === 2
+        )
+      case 2: {
+        return (
+          pathfinders.some(this.createGetPathfinderIs('bishop')) ||
+          pathfinders.some(this.createGetPathfinderIs('knight'))
+        )
+      }
+      case 1:
+        return true
+      default:
+        return false
+    }
+  }
+
+  private getDidEnd = (battle: BattleManager) => {
+    const teams = battle.grid.getTeams() as ChessTeam[]
+
+    const teamsWithInsufficientMatingMaterial = teams.filter(team =>
+      this.getDoesTeamHaveInsufficientMatingMaterial(battle, team)
+    )
+
+    switch (teamsWithInsufficientMatingMaterial.length) {
+      case 2:
+        this.winningTeam = 'Neither team'
+        this.gameEndReason = 'Insufficient mating material'
+        return true
+      case 1:
+        const [team] = teamsWithInsufficientMatingMaterial
+        this.winningTeam = team.type === 'white' ? 'Black' : 'White'
+        this.gameEndReason = 'Insufficient mating material'
+        return true
+      default:
+        break
+    }
+
+    const losingTeam = teams.find(
+      team =>
+        team.isInCheckMate(battle as Chess) ||
+        team.isInStaleMate(battle as Chess)
+    )
+
+    if (losingTeam) {
+      this.winningTeam = losingTeam.type === 'white' ? 'Black' : 'White'
+      this.gameEndReason = losingTeam.isInCheckMate(battle as Chess)
+        ? 'Checkmate'
+        : 'Stalemate'
+      return true
+    }
+
+    return false
   }
 
   setupListeners() {
@@ -44,7 +125,7 @@ export default class Chess extends BattleManager {
     this.events.off('actionableUnitChanged', this.handleUpdateUnit)
   }
 
-  getEnPassantCoords = (pathfinderA: Pathfinder) => {
+  private getEnPassantCoords = (pathfinderA: Pathfinder) => {
     const unitA = pathfinderA.unit as ChessPiece
     const pathfinderB = this.lastTouchedPathfinder
     const unitB = pathfinderB?.unit as ChessPiece | undefined
@@ -70,7 +151,7 @@ export default class Chess extends BattleManager {
     return []
   }
 
-  handleEnPassant: TileEvents['unitStop'] = pathfinder => {
+  private handleEnPassant: TileEvents['unitStop'] = pathfinder => {
     if (
       (pathfinder.unit as ChessPiece).is('pawn') &&
       EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
@@ -95,7 +176,7 @@ export default class Chess extends BattleManager {
     }
   }
 
-  handlePromotePawn: TileEvents['unitStop'] = pathfinder => {
+  private handlePromotePawn: TileEvents['unitStop'] = pathfinder => {
     if ((pathfinder.unit as ChessPiece).type === 'pawn') {
       if (
         { white: 0, black: 7 }[(pathfinder.unit.team as ChessTeam).type] ===
@@ -106,7 +187,7 @@ export default class Chess extends BattleManager {
     }
   }
 
-  handleUpdateUnit = (incoming: ActionableUnit) => {
+  private handleUpdateUnit = (incoming: ActionableUnit) => {
     const unit = incoming.unit as ChessPiece
     unit.totalMovesPerformed++
     if (unit.is('pawn') && unit.totalMovesPerformed === 1) {
@@ -114,7 +195,7 @@ export default class Chess extends BattleManager {
     }
   }
 
-  getCastlingCoords = (pathfinder: Pathfinder) => {
+  private getCastlingCoords = (pathfinder: Pathfinder) => {
     const unit = pathfinder.unit as ChessPiece
     const team = unit.team as ChessTeam
 
@@ -147,7 +228,7 @@ export default class Chess extends BattleManager {
               })
 
               modifications.apply()
-              const result = !team.getIsKingInCheck(this)
+              const result = !team.isKingInCheck(this)
               modifications.revoke()
 
               return result
@@ -158,7 +239,7 @@ export default class Chess extends BattleManager {
       }, [] as Coords[])
   }
 
-  handleCastling: TileEvents['unitStop'] = pathfinder => {
+  private handleCastling: TileEvents['unitStop'] = pathfinder => {
     const unit = pathfinder.unit as ChessPiece
 
     if (
@@ -206,7 +287,7 @@ export default class Chess extends BattleManager {
       })
 
       modification.apply()
-      const result = !(pathfinder.unit.team as ChessTeam).getIsKingInCheck(this)
+      const result = !(pathfinder.unit.team as ChessTeam).isKingInCheck(this)
       modification.revoke()
 
       return result

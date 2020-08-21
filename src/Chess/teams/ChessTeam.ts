@@ -52,25 +52,18 @@ export default class ChessTeam extends Team {
     }, [] as [Unit, RawCoords][])
   }
 
-  getHasBeenDefeated = (battle: Chess) => {
-    const pathfinders = (battle.grid as ChessBoard).teams[
-      this.type
-    ].getPathfinders(battle.grid)
-    const king = pathfinders.find(pathfinder =>
-      (pathfinder.unit as ChessPiece).is('king')
-    )
+  isInStaleMate = (battle: Chess) =>
+    (battle.grid as ChessBoard).teams[this.type]
+      .getPathfinders(battle.grid)
+      .every(p => battle.getLegalMoves(p).length === 0)
 
-    return !king || pathfinders.every(p => battle.getLegalMoves(p).length === 0)
-  }
+  isInCheckMate = (battle: Chess) =>
+    this.isInStaleMate(battle) && this.isKingInCheck(battle)
 
-  getIsKingInCheck = (battle: Chess) => {
+  isKingInCheck = (battle: Chess) => {
     const king = (battle.grid as ChessBoard).teams[this.type]
       .getPathfinders(battle.grid)
-      .find(pathfinder => (pathfinder.unit as ChessPiece).is('king'))
-
-    if (!king) {
-      return false
-    }
+      .find(pathfinder => (pathfinder.unit as ChessPiece).is('king'))!
 
     const otherTeam = (battle.grid as ChessBoard).teams[
       this.type === 'white' ? 'black' : 'white'

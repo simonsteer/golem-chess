@@ -64,7 +64,7 @@ function App() {
     }
 
     const handleGameOver = () => {
-      const res = window.confirm(`${battle.winningTeam} wins!`)
+      window.confirm(`${battle.gameEndReason} - ${battle.winningTeam} wins`)
       window.location.reload()
     }
 

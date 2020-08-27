@@ -1,9 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react'
 import Chess from './Chess'
 import './App.css'
-import { Team, Pathfinder, Coords, TileEvents, GridEvents } from 'automaton'
+import { Team, Pathfinder, Coords, GridEvents } from 'automaton'
 import { useEffectOnce } from 'react-use'
-import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 import Tile from './components/Tile'
 import Grid from './components/Grid'
 import { ChessTeam } from './Chess/teams'
@@ -12,67 +11,40 @@ import * as Units from './Chess/units'
 
 const { King, Pawn, ...PromotionUnits } = Units
 
+function useForceUpdate() {
+  const forceUpdate = useState()[1]
+  return () => forceUpdate(undefined)
+}
+
 function App() {
   const battle = useRef(new Chess()).current
+  const forceUpdate = useForceUpdate()
   const [highlightedCoords, setHighlightedCoords] = useState<string[]>([])
-  const [actionableUnits, setActionableUnits] = useState<ActionableUnit[]>([])
-  const [turnIndex, setTurnIndex] = useState(battle.turnIndex)
-  const [activeTeam, setActiveTeam] = useState<Team>()
-  const [pathfinders, setPathfinders] = useState(battle.grid.getPathfinders())
-  const [selectedUnit, setSelectedUnit] = useState<ActionableUnit>()
+  const [selectedUnit, setSelectedUnit] = useState<Pathfinder>()
   const [optionsMenuType, setOptionsMenuType] = useState<
     'midgame' | 'promotion' | 'endgame'
   >('midgame')
 
   useEffectOnce(() => {
-    const updateUnit = (incoming: ActionableUnit) =>
-      setPathfinders(pathfinders =>
-        pathfinders.map(pathfinder => {
-          if (pathfinder.unit.id === incoming.unit.id) {
-            return incoming.pathfinder
-          }
-          return pathfinder
-        })
-      )
-    const handleNextTurn = ({
-      actionableUnits,
-      team,
-      turnIndex,
-    }: {
-      actionableUnits: ActionableUnit[]
-      team: Team
-      turnIndex: number
-    }) => {
-      setActionableUnits(actionableUnits)
-      setTurnIndex(turnIndex)
-      setActiveTeam(team)
-    }
-
-    const handleAddUnits = (incoming: Pathfinder[]) =>
-      setPathfinders(pathfinders => [...incoming, ...pathfinders])
-
-    const handleRemoveUnits = (unitIds: Symbol[]) =>
-      setPathfinders(pathfinders =>
-        pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
-      )
-
-    const handlePromotePawn: GridEvents['unitMovement'] = pathfinder => {
+    const handleUnitMovement = (pathfinder: Pathfinder) => {
       const isPawn = (pathfinder.unit as ChessPiece).type === 'pawn'
       const isAtEndOfBoard =
         { white: 0, black: 7 }[(pathfinder.unit.team as ChessTeam).type] ===
         pathfinder.coordinates.y
 
       setOptionsMenuType(isPawn && isAtEndOfBoard ? 'promotion' : 'midgame')
+      forceUpdate()
     }
 
-    const handleGameOver = () => setOptionsMenuType('endgame')
+    const handleGameOver = () => {
+      setOptionsMenuType('endgame')
+    }
 
     battle.setupListeners()
-    battle.grid.events.on('unitMovement', handlePromotePawn)
-    battle.grid.events.on('addUnits', handleAddUnits)
-    battle.grid.events.on('removeUnits', handleRemoveUnits)
-    battle.events.on('actionableUnitChanged', updateUnit)
-    battle.events.on('nextTurn', handleNextTurn)
+    battle.grid.events.on('unitMovement', handleUnitMovement)
+    battle.grid.events.on('addUnits', forceUpdate)
+    battle.grid.events.on('removeUnits', forceUpdate)
+    battle.events.on('nextTurn', forceUpdate)
     battle.events.on('battleEnd', handleGameOver)
 
     if (battle.turnIndex < 0) {
@@ -81,34 +53,35 @@ function App() {
 
     return () => {
       battle.teardownListeners()
-      battle.grid.events.off('unitMovement', handlePromotePawn)
-      battle.events.off('actionableUnitChanged', updateUnit)
-      battle.events.off('nextTurn', handleNextTurn)
-      battle.grid.events.off('addUnits', handleAddUnits)
-      battle.grid.events.off('removeUnits', handleRemoveUnits)
-      battle.events.on('battleEnd', handleGameOver)
+      battle.grid.events.off('unitMovement', handleUnitMovement)
+      battle.grid.events.off('addUnits', forceUpdate)
+      battle.grid.events.off('removeUnits', forceUpdate)
+      battle.events.off('nextTurn', forceUpdate)
+      battle.events.off('battleEnd', handleGameOver)
     }
   })
 
   const handleClickTile = useCallback(
     ({
-      actionableUnit,
+      pathfinder,
+      isOnActiveTeam,
       coords,
       isHighlighted,
       reachableCoords,
     }: {
-      actionableUnit: ActionableUnit | undefined
+      isOnActiveTeam: boolean
+      pathfinder: Pathfinder | undefined
       coords: Coords
       isHighlighted: boolean
       reachableCoords: string[]
     }) => {
       if (isHighlighted && selectedUnit) {
-        const otherUnit = pathfinders.find(
-          p => p.coordinates.hash === coords.hash
-        )?.unit
+        const otherUnit = battle.grid
+          .getPathfinders()
+          .find(p => p.coordinates.hash === coords.hash)?.unit
 
         if (otherUnit) battle.grid.removeUnits([otherUnit.id])
-        selectedUnit.actions.move([coords])
+        selectedUnit.move([coords])
 
         setSelectedUnit(undefined)
         setHighlightedCoords([])
@@ -117,15 +90,20 @@ function App() {
 
         return
       }
-      if (selectedUnit && selectedUnit.unit.id === actionableUnit?.unit.id) {
+      if (
+        (selectedUnit && selectedUnit.unit.id === pathfinder?.unit.id) ||
+        !isOnActiveTeam
+      ) {
         setSelectedUnit(undefined)
       } else {
-        setSelectedUnit(actionableUnit)
+        setSelectedUnit(pathfinder)
         setHighlightedCoords(reachableCoords)
       }
     },
-    [setSelectedUnit, selectedUnit, setHighlightedCoords, pathfinders, battle]
+    [setSelectedUnit, selectedUnit, setHighlightedCoords, battle]
   )
+
+  const activeTeam = battle.getActiveTeam()
 
   const renderOptionsMenu = useCallback(() => {
     switch (optionsMenuType) {
@@ -180,12 +158,12 @@ function App() {
       default:
         return null
     }
-  }, [optionsMenuType, battle.grid, battle.lastTouchedPathfinder])
+  }, [optionsMenuType, battle.grid, activeTeam, battle.lastTouchedPathfinder])
 
   return (
     <div className="App">
       <div className="info">
-        <p>Turn: {Math.floor(turnIndex / 2)}</p>
+        <p>Turn: {Math.floor(battle.turnIndex / 2)}</p>
         <p>{activeTeam ? `${(activeTeam as ChessTeam).type} to move` : ''}</p>
       </div>
       <Grid
@@ -198,21 +176,22 @@ function App() {
         }
         graph={battle.grid.graph}
         renderItem={({ coords }) => {
-          const pathfinder = pathfinders.find(
-            p => p.coordinates.hash === coords.hash
-          )
-          const actionableUnit = actionableUnits.find(
-            actionable => actionable.pathfinder.coordinates.hash === coords.hash
-          )
-          const reachableCoords = actionableUnit
-            ? battle.getLegalMoves(actionableUnit.pathfinder)
+          const pathfinder = battle.grid
+            .getPathfinders()
+            .find(p => p.coordinates.hash === coords.hash)
+
+          const isOnActiveTeam =
+            !!pathfinder && pathfinder.unit.team.id === activeTeam?.id
+
+          const reachableCoords = isOnActiveTeam
+            ? battle.getLegalMoves(pathfinder!)
             : []
           const isHighlighted = highlightedCoords.includes(coords.hash)
 
           return (
             <Tile
               unit={pathfinder?.unit}
-              isOnActiveTeam={!!actionableUnit}
+              isOnActiveTeam={isOnActiveTeam}
               isSelected={
                 selectedUnit
                   ? selectedUnit.unit.id === pathfinder?.unit.id
@@ -224,8 +203,9 @@ function App() {
               }}
               onClick={() =>
                 handleClickTile({
+                  isOnActiveTeam,
+                  pathfinder,
                   isHighlighted,
-                  actionableUnit,
                   coords,
                   reachableCoords,
                 })

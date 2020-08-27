@@ -2,12 +2,9 @@ import {
   Battle,
   Pathfinder,
   Coords,
-  TileEvents,
   RevocableGridModification,
   Team,
-  GridModificationType,
   GridModifications,
-  GridEvents,
 } from 'automaton'
 import { ChessTeam } from './teams'
 import { ChessBoard } from './grids'
@@ -20,7 +17,6 @@ import {
   CASTLING_COORDS,
 } from './constants'
 import ChessPiece from './units/ChessPiece'
-import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 import { ChessPieceType } from './units/types'
 
 export default class Chess extends Battle {
@@ -31,6 +27,7 @@ export default class Chess extends Battle {
     | 'Insufficient mating material'
     | 'Draw'
     | 'Both players resigned' = 'Stalemate'
+  lastTouchedPathfinder?: Pathfinder
 
   constructor() {
     super(new ChessBoard())
@@ -106,15 +103,17 @@ export default class Chess extends Battle {
   }
 
   setupListeners() {
-    this.grid.events.on('unitMovement', this.handleCastling)
-    this.grid.events.on('unitMovement', this.handleEnPassant)
-    this.events.on('actionableUnitChanged', this.handleUpdateUnit)
+    this.grid.events.on('unitMovement', this.handleUnitMovement)
   }
 
   teardownListeners() {
-    this.grid.events.off('unitMovement', this.handleCastling)
-    this.grid.events.on('unitMovement', this.handleEnPassant)
-    this.events.off('actionableUnitChanged', this.handleUpdateUnit)
+    this.grid.events.off('unitMovement', this.handleUnitMovement)
+  }
+
+  handleUnitMovement = (pathfinder: Pathfinder) => {
+    this.handleCastling(pathfinder)
+    this.handleEnPassant(pathfinder)
+    this.handleUpdateUnit(pathfinder)
   }
 
   // TODO: calc of "special" tiles like this should belong to a Unit or its movement
@@ -143,7 +142,7 @@ export default class Chess extends Battle {
     return []
   }
 
-  private handleEnPassant: GridEvents['unitMovement'] = pathfinder => {
+  private handleEnPassant = (pathfinder: Pathfinder) => {
     if (
       this.createGetPathfinderIs('pawn')(pathfinder) &&
       EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
@@ -169,12 +168,13 @@ export default class Chess extends Battle {
   }
 
   // TODO: move this into BattleManager or TurnManager
-  private handleUpdateUnit = (incoming: ActionableUnit) => {
+  private handleUpdateUnit = (incoming: Pathfinder) => {
     const unit = incoming.unit as ChessPiece
     unit.totalMovesPerformed++
     if (unit.is('pawn') && unit.totalMovesPerformed === 1) {
       unit.movement.steps = 1
     }
+    this.lastTouchedPathfinder = incoming
   }
 
   // TODO: calc of "special" tiles like this should belong to a Unit or its movement
@@ -224,7 +224,7 @@ export default class Chess extends Battle {
       }, [] as Coords[])
   }
 
-  private handleCastling: GridEvents['unitMovement'] = pathfinder => {
+  private handleCastling = (pathfinder: Pathfinder) => {
     const unit = pathfinder.unit as ChessPiece
 
     if (

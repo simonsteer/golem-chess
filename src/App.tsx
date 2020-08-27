@@ -27,7 +27,7 @@ function App() {
   >('midgame')
 
   useEffectOnce(() => {
-    const handleUnitMovement = (deployment: Deployment) => {
+    const handlePawnPromotion = (deployment: Deployment) => {
       const isPawn = (deployment.unit as ChessPiece).type === 'pawn'
       const isAtEndOfBoard =
         { white: 0, black: 7 }[(deployment.unit.team as ChessTeam).type] ===
@@ -41,7 +41,7 @@ function App() {
     }
 
     battle.setupListeners()
-    battle.grid.events.on('unitMovement', handleUnitMovement)
+    battle.grid.events.on('unitMovement', handlePawnPromotion)
     battle.grid.events.on('unitsDeployed', forceUpdate)
     battle.grid.events.on('unitsWithdrawn', forceUpdate)
     battle.events.on('nextTurn', forceUpdate)
@@ -53,7 +53,7 @@ function App() {
 
     return () => {
       battle.teardownListeners()
-      battle.grid.events.off('unitMovement', handleUnitMovement)
+      battle.grid.events.off('unitMovement', handlePawnPromotion)
       battle.grid.events.off('unitsDeployed', forceUpdate)
       battle.grid.events.off('unitsWithdrawn', forceUpdate)
       battle.events.off('nextTurn', forceUpdate)

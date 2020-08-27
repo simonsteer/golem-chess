@@ -17,7 +17,7 @@ export default class ChessBoard extends Grid {
       white: whiteTeam,
     }
 
-    this.addUnits([
+    this.deployUnits([
       ...this.teams.white.createPieces(),
       ...this.teams.black.createPieces(),
     ])

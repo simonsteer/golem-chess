@@ -21,8 +21,8 @@ export default class ChessPiece extends Unit {
       team,
       weapon: undefined,
       movement: {
-        canPassThroughUnit: pathfinder =>
-          (pathfinder.unit.team as ChessTeam).type !== team.type,
+        canPassThroughUnit: deployment =>
+          (deployment.unit.team as ChessTeam).type !== team.type,
         unitPassThroughLimit: 1,
         ...movement,
       },

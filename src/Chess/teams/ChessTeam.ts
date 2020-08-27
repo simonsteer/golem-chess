@@ -54,7 +54,7 @@ export default class ChessTeam extends Team {
 
   isInStaleMate = (battle: Chess) =>
     (battle.grid as ChessBoard).teams[this.type]
-      .getPathfinders(battle.grid)
+      .getDeployments(battle.grid)
       .every(p => battle.getLegalMoves(p).length === 0)
 
   isInCheckMate = (battle: Chess) =>
@@ -62,14 +62,14 @@ export default class ChessTeam extends Team {
 
   isKingInCheck = (battle: Chess) => {
     const king = (battle.grid as ChessBoard).teams[this.type]
-      .getPathfinders(battle.grid)
-      .find(pathfinder => (pathfinder.unit as ChessPiece).is('king'))!
+      .getDeployments(battle.grid)
+      .find(deployment => (deployment.unit as ChessPiece).is('king'))!
 
     const otherTeam = (battle.grid as ChessBoard).teams[
       this.type === 'white' ? 'black' : 'white'
     ]
 
-    return otherTeam.getPathfinders(battle.grid).some(p => {
+    return otherTeam.getDeployments(battle.grid).some(p => {
       const moves = [...p.getReachable(), ...p.getTargetable()].map(c => c.hash)
       return moves.includes(king.coordinates.hash)
     })

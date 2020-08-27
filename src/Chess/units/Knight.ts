@@ -17,8 +17,8 @@ export default class Knight extends ChessPiece {
             exceptions: [({ x, y }) => Math.abs(x) !== Math.abs(y)],
           },
         ],
-        canPassThroughUnit: pathfinder =>
-          (pathfinder.unit.team as ChessTeam).type !== team.type,
+        canPassThroughUnit: deployment =>
+          (deployment.unit.team as ChessTeam).type !== team.type,
         unitPassThroughLimit: 1,
       },
     })

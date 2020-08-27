@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import Chess from './Chess'
 import './App.css'
-import { Team, Pathfinder, Coords, GridEvents } from 'automaton'
+import { Deployment, Coords } from 'automaton'
 import { useEffectOnce } from 'react-use'
 import Tile from './components/Tile'
 import Grid from './components/Grid'
@@ -12,28 +12,27 @@ import * as Units from './Chess/units'
 const { King, Pawn, ...PromotionUnits } = Units
 
 function useForceUpdate() {
-  const forceUpdate = useState()[1]
-  return () => forceUpdate(undefined)
+  const forceUpdate = useState<{}>()[1]
+  return () => forceUpdate({})
 }
 
 function App() {
   const battle = useRef(new Chess()).current
   const forceUpdate = useForceUpdate()
   const [highlightedCoords, setHighlightedCoords] = useState<string[]>([])
-  const [selectedUnit, setSelectedUnit] = useState<Pathfinder>()
+  const [selectedUnit, setSelectedUnit] = useState<Deployment>()
   const [optionsMenuType, setOptionsMenuType] = useState<
     'midgame' | 'promotion' | 'endgame'
   >('midgame')
 
   useEffectOnce(() => {
-    const handleUnitMovement = (pathfinder: Pathfinder) => {
-      const isPawn = (pathfinder.unit as ChessPiece).type === 'pawn'
+    const handleUnitMovement = (deployment: Deployment) => {
+      const isPawn = (deployment.unit as ChessPiece).type === 'pawn'
       const isAtEndOfBoard =
-        { white: 0, black: 7 }[(pathfinder.unit.team as ChessTeam).type] ===
-        pathfinder.coordinates.y
+        { white: 0, black: 7 }[(deployment.unit.team as ChessTeam).type] ===
+        deployment.coordinates.y
 
       setOptionsMenuType(isPawn && isAtEndOfBoard ? 'promotion' : 'midgame')
-      forceUpdate()
     }
 
     const handleGameOver = () => {
@@ -42,20 +41,20 @@ function App() {
 
     battle.setupListeners()
     battle.grid.events.on('unitMovement', handleUnitMovement)
-    battle.grid.events.on('addUnits', forceUpdate)
-    battle.grid.events.on('removeUnits', forceUpdate)
+    battle.grid.events.on('unitsDeployed', forceUpdate)
+    battle.grid.events.on('unitsWithdrawn', forceUpdate)
     battle.events.on('nextTurn', forceUpdate)
     battle.events.on('battleEnd', handleGameOver)
 
     if (battle.turnIndex < 0) {
-      battle.advance()
+      battle.nextTurn()
     }
 
     return () => {
       battle.teardownListeners()
       battle.grid.events.off('unitMovement', handleUnitMovement)
-      battle.grid.events.off('addUnits', forceUpdate)
-      battle.grid.events.off('removeUnits', forceUpdate)
+      battle.grid.events.off('unitsDeployed', forceUpdate)
+      battle.grid.events.off('unitsWithdrawn', forceUpdate)
       battle.events.off('nextTurn', forceUpdate)
       battle.events.off('battleEnd', handleGameOver)
     }
@@ -63,40 +62,40 @@ function App() {
 
   const handleClickTile = useCallback(
     ({
-      pathfinder,
+      deployment,
       isOnActiveTeam,
       coords,
       isHighlighted,
       reachableCoords,
     }: {
       isOnActiveTeam: boolean
-      pathfinder: Pathfinder | undefined
+      deployment: Deployment | undefined
       coords: Coords
       isHighlighted: boolean
       reachableCoords: string[]
     }) => {
       if (isHighlighted && selectedUnit) {
         const otherUnit = battle.grid
-          .getPathfinders()
+          .getDeployments()
           .find(p => p.coordinates.hash === coords.hash)?.unit
 
-        if (otherUnit) battle.grid.removeUnits([otherUnit.id])
+        if (otherUnit) battle.grid.withdrawUnit(otherUnit.id)
         selectedUnit.move([coords])
 
         setSelectedUnit(undefined)
         setHighlightedCoords([])
 
-        battle.advance()
+        battle.nextTurn()
 
         return
       }
       if (
-        (selectedUnit && selectedUnit.unit.id === pathfinder?.unit.id) ||
+        (selectedUnit && selectedUnit.unit.id === deployment?.unit.id) ||
         !isOnActiveTeam
       ) {
         setSelectedUnit(undefined)
       } else {
-        setSelectedUnit(pathfinder)
+        setSelectedUnit(deployment)
         setHighlightedCoords(reachableCoords)
       }
     },
@@ -142,11 +141,11 @@ function App() {
                 const PromotedUnit =
                   PromotionUnits[key as keyof typeof PromotionUnits]
 
-                const pawn = battle.lastTouchedPathfinder!
+                const pawn = battle.lastTouchedDeployment!
                 const unit = new PromotedUnit(pawn.unit.team as ChessTeam)
 
-                battle.grid.removeUnits([pawn.unit.id])
-                battle.grid.addUnits([[unit, pawn.coordinates.raw]])
+                battle.grid.withdrawUnit(pawn.unit.id)
+                battle.grid.deployUnit(unit, pawn.coordinates.raw)
                 setOptionsMenuType('midgame')
               }}
               key={key}
@@ -158,7 +157,7 @@ function App() {
       default:
         return null
     }
-  }, [optionsMenuType, battle.grid, activeTeam, battle.lastTouchedPathfinder])
+  }, [optionsMenuType, battle.grid, activeTeam, battle.lastTouchedDeployment])
 
   return (
     <div className="App">
@@ -176,25 +175,25 @@ function App() {
         }
         graph={battle.grid.graph}
         renderItem={({ coords }) => {
-          const pathfinder = battle.grid
-            .getPathfinders()
+          const deployment = battle.grid
+            .getDeployments()
             .find(p => p.coordinates.hash === coords.hash)
 
           const isOnActiveTeam =
-            !!pathfinder && pathfinder.unit.team.id === activeTeam?.id
+            !!deployment && deployment.unit.team.id === activeTeam?.id
 
           const reachableCoords = isOnActiveTeam
-            ? battle.getLegalMoves(pathfinder!)
+            ? battle.getLegalMoves(deployment!)
             : []
           const isHighlighted = highlightedCoords.includes(coords.hash)
 
           return (
             <Tile
-              unit={pathfinder?.unit}
+              unit={deployment?.unit}
               isOnActiveTeam={isOnActiveTeam}
               isSelected={
                 selectedUnit
-                  ? selectedUnit.unit.id === pathfinder?.unit.id
+                  ? selectedUnit.unit.id === deployment?.unit.id
                   : false
               }
               isHighlighted={isHighlighted}
@@ -204,7 +203,7 @@ function App() {
               onClick={() =>
                 handleClickTile({
                   isOnActiveTeam,
-                  pathfinder,
+                  deployment,
                   isHighlighted,
                   coords,
                   reachableCoords,

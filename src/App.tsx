@@ -8,6 +8,7 @@ import Grid from './components/Grid'
 import { ChessTeam } from './Chess/teams'
 import ChessPiece from './Chess/units/ChessPiece'
 import * as Units from './Chess/units'
+import { ChessBoard } from './Chess/grids'
 
 const { King, Pawn, ...PromotionUnits } = Units
 
@@ -141,7 +142,7 @@ function App() {
                 const PromotedUnit =
                   PromotionUnits[key as keyof typeof PromotionUnits]
 
-                const pawn = battle.lastTouchedDeployment!
+                const pawn = (battle.grid as ChessBoard).lastTouchedDeployment!
                 const unit = new PromotedUnit(pawn.unit.team as ChessTeam)
 
                 battle.grid.withdrawUnit(pawn.unit.id)
@@ -157,7 +158,12 @@ function App() {
       default:
         return null
     }
-  }, [optionsMenuType, battle.grid, activeTeam, battle.lastTouchedDeployment])
+  }, [
+    optionsMenuType,
+    battle.grid,
+    activeTeam,
+    (battle.grid as ChessBoard).lastTouchedDeployment,
+  ])
 
   return (
     <div className="App">
@@ -183,7 +189,7 @@ function App() {
             !!deployment && deployment.unit.team.id === activeTeam?.id
 
           const reachableCoords = isOnActiveTeam
-            ? battle.getLegalMoves(deployment!)
+            ? (deployment!.unit as ChessPiece).getLegalMoves(deployment!)
             : []
           const isHighlighted = highlightedCoords.includes(coords.hash)
 

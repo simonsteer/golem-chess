@@ -1,8 +1,10 @@
-import { Grid, createSimpleGraph } from 'automaton'
+import { Grid, createSimpleGraph, Deployment } from 'automaton'
 import { ChessTeam } from '../teams'
 
 export default class ChessBoard extends Grid {
   teams: { black: ChessTeam; white: ChessTeam }
+  lastTouchedDeployment?: Deployment
+
   constructor() {
     super({ graph: createSimpleGraph(8) })
 

@@ -1,4 +1,4 @@
-import { Team, Unit, RawCoords } from 'automaton'
+import { Team, Unit, RawCoords, Grid } from 'automaton'
 import { Pawn, Rook, Knight, Bishop, King, Queen } from '../units'
 import ChessBoard from '../grids/ChessBoard'
 import Chess from '..'
@@ -52,24 +52,24 @@ export default class ChessTeam extends Team {
     }, [] as [Unit, RawCoords][])
   }
 
-  isInStaleMate = (battle: Chess) =>
-    (battle.grid as ChessBoard).teams[this.type]
-      .getDeployments(battle.grid)
-      .every(p => battle.getLegalMoves(p).length === 0)
+  isInStaleMate = (grid: ChessBoard) =>
+    grid.teams[this.type]
+      .getDeployments(grid)
+      .every(p => (p.unit as ChessPiece).getLegalMoves(p).length === 0)
 
-  isInCheckMate = (battle: Chess) =>
-    this.isInStaleMate(battle) && this.isKingInCheck(battle)
+  isInCheckMate = (grid: ChessBoard) =>
+    this.isInStaleMate(grid) && this.isKingInCheck(grid)
 
-  isKingInCheck = (battle: Chess) => {
-    const king = (battle.grid as ChessBoard).teams[this.type]
-      .getDeployments(battle.grid)
+  isKingInCheck = (grid: ChessBoard) => {
+    const king = grid.teams[this.type]
+      .getDeployments(grid)
       .find(deployment => (deployment.unit as ChessPiece).is('king'))!
 
-    const otherTeam = (battle.grid as ChessBoard).teams[
+    const otherTeam = (grid as ChessBoard).teams[
       this.type === 'white' ? 'black' : 'white'
     ]
 
-    return otherTeam.getDeployments(battle.grid).some(p => {
+    return otherTeam.getDeployments(grid).some(p => {
       const moves = [...p.getReachable(), ...p.getTargetable()].map(c => c.hash)
       return moves.includes(king.coordinates.hash)
     })

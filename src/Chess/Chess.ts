@@ -1,18 +1,9 @@
-import {
-  Battle,
-  Deployment,
-  Coords,
-  RevocableGridModification,
-  Team,
-  GridModifications,
-} from 'automaton'
+import { Battle, Deployment, Team } from 'automaton'
 import { ChessTeam } from './teams'
 import { ChessBoard } from './grids'
 import {
-  EN_PASSANT_HASHES,
   EN_PASSANT_CAPTURE_HASHES,
   EN_PASSANT_COORDS,
-  CASTLING_HASHES,
   CASTLING_CAPTURE_HASHES,
   CASTLING_COORDS,
 } from './constants'
@@ -27,15 +18,15 @@ export default class Chess extends Battle {
     | 'Insufficient mating material'
     | 'Draw'
     | 'Both players resigned' = 'Stalemate'
-  lastTouchedDeployment?: Deployment
 
   constructor() {
     super(new ChessBoard())
     this.endCondition = this.getDidEnd
   }
 
-  private createGetDeploymentIs = <K extends ChessPieceType>(type: K) => (
-    deployment: Deployment
+  private getDeploymentIs = <K extends ChessPieceType>(
+    deployment: Deployment,
+    type: K
   ) => (deployment.unit as ChessPiece).is(type)
 
   private getDoesTeamHaveInsufficientMatingMaterial = (
@@ -43,18 +34,19 @@ export default class Chess extends Battle {
     team: Team
   ) => {
     const deployments = team.getDeployments(battle.grid)
-    if (deployments.some(this.createGetDeploymentIs('pawn'))) {
+    if (deployments.some(d => this.getDeploymentIs(d, 'pawn'))) {
       return false
     }
     switch (deployments.length) {
       case 3:
         return (
-          deployments.filter(this.createGetDeploymentIs('knight')).length === 2
+          deployments.filter(d => this.getDeploymentIs(d, 'knight')).length ===
+          2
         )
       case 2: {
         return (
-          deployments.some(this.createGetDeploymentIs('bishop')) ||
-          deployments.some(this.createGetDeploymentIs('knight'))
+          deployments.some(d => this.getDeploymentIs(d, 'bishop')) ||
+          deployments.some(d => this.getDeploymentIs(d, 'knight'))
         )
       }
       case 1:
@@ -87,13 +79,13 @@ export default class Chess extends Battle {
 
     const losingTeam = teams.find(
       team =>
-        team.isInCheckMate(battle as Chess) ||
-        team.isInStaleMate(battle as Chess)
+        team.isInCheckMate(battle.grid as ChessBoard) ||
+        team.isInStaleMate(battle.grid as ChessBoard)
     )
 
     if (losingTeam) {
       this.winningTeam = losingTeam.type === 'white' ? 'Black' : 'White'
-      this.gameEndReason = losingTeam.isInCheckMate(battle as Chess)
+      this.gameEndReason = losingTeam.isInCheckMate(battle.grid as ChessBoard)
         ? 'Checkmate'
         : 'Stalemate'
       return true
@@ -110,41 +102,15 @@ export default class Chess extends Battle {
     this.grid.events.off('unitMovement', this.handleUnitMovement)
   }
 
-  handleUnitMovement = (deployment: Deployment) => {
+  private handleUnitMovement = (deployment: Deployment) => {
     this.handleCastling(deployment)
     this.handleEnPassant(deployment)
     this.handleUpdateUnit(deployment)
   }
 
-  // TODO: calc of "special" tiles like this should belong to a Unit or its movement
-  private getEnPassantCoords = (deploymentA: Deployment) => {
-    const deploymentB = this.lastTouchedDeployment
-    const unitB = deploymentB?.unit as ChessPiece | undefined
-
-    if (
-      this.createGetDeploymentIs('pawn')(deploymentA) &&
-      unitB?.is('pawn') &&
-      unitB.totalMovesPerformed === 1
-    ) {
-      const deltas = deploymentA.coordinates.deltas(deploymentB!.coordinates)
-      const canEnPassant =
-        EN_PASSANT_HASHES.includes(deploymentB!.coordinates.hash) &&
-        Math.abs(deltas.x) === 1 &&
-        deltas.y === 0
-
-      if (canEnPassant) {
-        const enPassantCoords = deploymentB!.coordinates.raw
-        enPassantCoords.y = enPassantCoords.y === 4 ? 5 : 2
-
-        return [new Coords(enPassantCoords)]
-      }
-    }
-    return []
-  }
-
   private handleEnPassant = (deployment: Deployment) => {
     if (
-      this.createGetDeploymentIs('pawn')(deployment) &&
+      this.getDeploymentIs(deployment, 'pawn') &&
       EN_PASSANT_CAPTURE_HASHES.includes(deployment.coordinates.hash)
     ) {
       const targetCoords = EN_PASSANT_COORDS.find(
@@ -174,54 +140,7 @@ export default class Chess extends Battle {
     if (unit.is('pawn') && unit.totalMovesPerformed === 1) {
       unit.movement.steps = 1
     }
-    this.lastTouchedDeployment = incoming
-  }
-
-  // TODO: calc of "special" tiles like this should belong to a Unit or its movement
-  private getCastlingCoords = (deployment: Deployment) => {
-    const unit = deployment.unit as ChessPiece
-    const team = unit.team as ChessTeam
-
-    if (!unit.is('king') || unit.totalMovesPerformed !== 0) {
-      return []
-    }
-
-    return unit.team
-      .getDeployments(this.grid)
-      .filter(
-        p =>
-          (p.unit as ChessPiece).is('rook') &&
-          (p.unit as ChessPiece).totalMovesPerformed === 0
-      )
-      .reduce((acc, rook) => {
-        const reachable = rook.getReachable()
-        if (
-          CASTLING_HASHES.some(hash =>
-            Coords.hashMany(reachable).includes(hash)
-          )
-        ) {
-          acc.push(
-            ...reachable.filter(coords => {
-              if (!CASTLING_CAPTURE_HASHES.includes(coords.hash)) {
-                return false
-              }
-
-              const modifications = new RevocableGridModification(this.grid, [
-                {
-                  type: 'moveUnit',
-                  payload: [deployment.unit.id, [coords.raw]],
-                },
-              ])
-              modifications.apply()
-              const result = !team.isKingInCheck(this)
-              modifications.revoke()
-
-              return result
-            })
-          )
-        }
-        return acc
-      }, [] as Coords[])
+    ;(this.grid as ChessBoard).lastTouchedDeployment = incoming
   }
 
   private handleCastling = (deployment: Deployment) => {
@@ -252,41 +171,5 @@ export default class Chess extends Battle {
           return false
         })
     }
-  }
-
-  getLegalMoves = (deployment: Deployment) => {
-    this.events.disable()
-    this.grid.events.disable()
-    this.grid.mapTiles(({ tile }) => tile.events.disable())
-
-    const moves = [
-      ...deployment.getReachable(),
-      ...deployment.getTargetable(),
-      ...this.getEnPassantCoords(deployment),
-      ...this.getCastlingCoords(deployment),
-    ].filter(coord => {
-      const otherDeployment = this.grid.getCoordinateData(coord)?.deployment
-
-      const modification = new RevocableGridModification(
-        this.grid,
-        [
-          otherDeployment
-            ? { type: 'withdrawUnit', payload: otherDeployment.unit.id }
-            : undefined,
-          { type: 'moveUnit', payload: [deployment.unit.id, [coord]] },
-        ].filter(Boolean) as GridModifications
-      )
-      modification.apply()
-      const result = !(deployment.unit.team as ChessTeam).isKingInCheck(this)
-      modification.revoke()
-
-      return result
-    })
-
-    this.events.enable()
-    this.grid.events.enable()
-    this.grid.mapTiles(({ tile }) => tile.events.enable())
-
-    return moves.map(c => c.hash)
   }
 }

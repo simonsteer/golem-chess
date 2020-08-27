@@ -1,10 +1,13 @@
 import {
-  BattleManager,
+  Battle,
   Pathfinder,
   Coords,
   TileEvents,
-  TemporaryGridModification,
+  RevocableGridModification,
   Team,
+  GridModificationType,
+  GridModifications,
+  GridEvents,
 } from 'automaton'
 import { ChessTeam } from './teams'
 import { ChessBoard } from './grids'
@@ -20,7 +23,7 @@ import ChessPiece from './units/ChessPiece'
 import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 import { ChessPieceType } from './units/types'
 
-export default class Chess extends BattleManager {
+export default class Chess extends Battle {
   winningTeam: 'White' | 'Black' | 'Neither team' = 'Neither team'
   gameEndReason:
     | 'Checkmate'
@@ -39,7 +42,7 @@ export default class Chess extends BattleManager {
   ) => (pathfinder.unit as ChessPiece).is(type)
 
   private getDoesTeamHaveInsufficientMatingMaterial = (
-    battle: BattleManager,
+    battle: Battle,
     team: Team
   ) => {
     const pathfinders = team.getPathfinders(battle.grid)
@@ -64,7 +67,7 @@ export default class Chess extends BattleManager {
     }
   }
 
-  private getDidEnd = (battle: BattleManager) => {
+  private getDidEnd = (battle: Battle) => {
     const teams = battle.grid.getTeams() as ChessTeam[]
 
     const teamsWithInsufficientMatingMaterial = teams.filter(team =>
@@ -103,14 +106,14 @@ export default class Chess extends BattleManager {
   }
 
   setupListeners() {
-    this.grid.graph[0][0].tile.events.on('unitStop', this.handleCastling)
-    this.grid.graph[0][0].tile.events.on('unitStop', this.handleEnPassant)
+    this.grid.events.on('unitMovement', this.handleCastling)
+    this.grid.events.on('unitMovement', this.handleEnPassant)
     this.events.on('actionableUnitChanged', this.handleUpdateUnit)
   }
 
   teardownListeners() {
-    this.grid.graph[0][0].tile.events.off('unitStop', this.handleCastling)
-    this.grid.graph[0][0].tile.events.off('unitStop', this.handleEnPassant)
+    this.grid.events.off('unitMovement', this.handleCastling)
+    this.grid.events.on('unitMovement', this.handleEnPassant)
     this.events.off('actionableUnitChanged', this.handleUpdateUnit)
   }
 
@@ -140,7 +143,7 @@ export default class Chess extends BattleManager {
     return []
   }
 
-  private handleEnPassant: TileEvents['unitStop'] = pathfinder => {
+  private handleEnPassant: GridEvents['unitMovement'] = pathfinder => {
     if (
       this.createGetPathfinderIs('pawn')(pathfinder) &&
       EN_PASSANT_CAPTURE_HASHES.includes(pathfinder.coordinates.hash)
@@ -203,9 +206,12 @@ export default class Chess extends BattleManager {
                 return false
               }
 
-              const modifications = new TemporaryGridModification(this.grid, {
-                move: [[pathfinder.unit.id, coords.raw]],
-              })
+              const modifications = new RevocableGridModification(this.grid, [
+                {
+                  type: 'moveUnit',
+                  payload: [pathfinder.unit.id, [coords.raw]],
+                },
+              ])
               modifications.apply()
               const result = !team.isKingInCheck(this)
               modifications.revoke()
@@ -218,7 +224,7 @@ export default class Chess extends BattleManager {
       }, [] as Coords[])
   }
 
-  private handleCastling: TileEvents['unitStop'] = pathfinder => {
+  private handleCastling: GridEvents['unitMovement'] = pathfinder => {
     const unit = pathfinder.unit as ChessPiece
 
     if (
@@ -261,10 +267,15 @@ export default class Chess extends BattleManager {
     ].filter(coord => {
       const otherPathfinder = this.grid.getData(coord)?.pathfinder
 
-      const modification = new TemporaryGridModification(this.grid, {
-        remove: otherPathfinder ? [otherPathfinder.unit.id] : [],
-        move: [[pathfinder.unit.id, coord]],
-      })
+      const modification = new RevocableGridModification(
+        this.grid,
+        [
+          otherPathfinder
+            ? { type: 'removeUnit', payload: otherPathfinder.unit.id }
+            : undefined,
+          { type: 'moveUnit', payload: [pathfinder.unit.id, [coord]] },
+        ].filter(Boolean) as GridModifications
+      )
       modification.apply()
       const result = !(pathfinder.unit.team as ChessTeam).isKingInCheck(this)
       modification.revoke()

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import Chess from './Chess'
 import './App.css'
-import { Team, Pathfinder, Coords, TileEvents } from 'automaton'
+import { Team, Pathfinder, Coords, TileEvents, GridEvents } from 'automaton'
 import { useEffectOnce } from 'react-use'
 import { ActionableUnit } from 'automaton/dist/services/BattleManager/services/TurnManager'
 import Tile from './components/Tile'
@@ -56,7 +56,7 @@ function App() {
         pathfinders.filter(pathfinder => !unitIds.includes(pathfinder.unit.id))
       )
 
-    const handlePromotePawn: TileEvents['unitStop'] = pathfinder => {
+    const handlePromotePawn: GridEvents['unitMovement'] = pathfinder => {
       const isPawn = (pathfinder.unit as ChessPiece).type === 'pawn'
       const isAtEndOfBoard =
         { white: 0, black: 7 }[(pathfinder.unit.team as ChessTeam).type] ===
@@ -68,11 +68,11 @@ function App() {
     const handleGameOver = () => setOptionsMenuType('endgame')
 
     battle.setupListeners()
-    battle.grid.graph[0][0].tile.events.on('unitStop', handlePromotePawn)
-    battle.events.on('actionableUnitChanged', updateUnit)
-    battle.events.on('nextTurn', handleNextTurn)
+    battle.grid.events.on('unitMovement', handlePromotePawn)
     battle.grid.events.on('addUnits', handleAddUnits)
     battle.grid.events.on('removeUnits', handleRemoveUnits)
+    battle.events.on('actionableUnitChanged', updateUnit)
+    battle.events.on('nextTurn', handleNextTurn)
     battle.events.on('battleEnd', handleGameOver)
 
     if (battle.turnIndex < 0) {
@@ -81,7 +81,7 @@ function App() {
 
     return () => {
       battle.teardownListeners()
-      battle.grid.graph[0][0].tile.events.off('unitStop', handlePromotePawn)
+      battle.grid.events.off('unitMovement', handlePromotePawn)
       battle.events.off('actionableUnitChanged', updateUnit)
       battle.events.off('nextTurn', handleNextTurn)
       battle.grid.events.off('addUnits', handleAddUnits)
